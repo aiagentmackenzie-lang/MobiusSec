@@ -1,0 +1,330 @@
+rules:
+  # ===== ANDROID SECURITY RULES (30) =====
+
+  # --- STORAGE ---
+
+  - id: android-shared-preferences-plain-text
+    languages: [java, kotlin]
+    message: "SharedPreferences stores data as plain XML. Use EncryptedSharedPreferences for sensitive data."
+    severity: WARNING
+    patterns:
+      - pattern: getSharedPreferences($NAME, $MODE)
+    metadata:
+      category: STORAGE
+      masvs: MASTG-STORAGE-3
+      owasp: MASVS-STORAGE
+
+  - id: android-mode-world-readable
+    languages: [java, kotlin]
+    message: "MODE_WORLD_READABLE allows any app to read SharedPreferences data. Removed in API 17."
+    severity: ERROR
+    patterns:
+      - pattern: MODE_WORLD_READABLE
+    metadata:
+      category: STORAGE
+      masvs: MASTG-STORAGE-3
+
+  - id: android-mode-world-writable
+    languages: [java, kotlin]
+    message: "MODE_WORLD_WRITEABLE allows any app to modify SharedPreferences data."
+    severity: ERROR
+    patterns:
+      - pattern: MODE_WORLD_WRITEABLE
+    metadata:
+      category: STORAGE
+      masvs: MASTG-STORAGE-3
+
+  - id: android-external-storage-write
+    languages: [java, kotlin]
+    message: "Writing to external storage — data is world-readable and persists after uninstall."
+    severity: WARNING
+    patterns:
+      - pattern: getExternalStorageDirectory()
+      - pattern: getExternalFilesDir(...)
+    metadata:
+      category: STORAGE
+      masvs: MASTG-STORAGE-1
+
+  - id: android-sqlite-unencrypted
+    languages: [java, kotlin]
+    message: "SQLite database is unencrypted. Use SQLCipher for sensitive data."
+    severity: WARNING
+    patterns:
+      - pattern: SQLiteDatabase.openDatabase(...)
+      - pattern: SQLiteOpenHelper(...)
+    metadata:
+      category: STORAGE
+      masvs: MASTG-STORAGE-8
+
+  # --- CRYPTO ---
+
+  - id: android-md5-hash
+    languages: [java, kotlin]
+    message: "MD5 is cryptographically broken. Use SHA-256 or SHA-3."
+    severity: ERROR
+    patterns:
+      - pattern: MessageDigest.getInstance("MD5")
+    metadata:
+      category: CRYPTO
+      masvs: MASTG-CRYPTO-2
+
+  - id: android-sha1-hash
+    languages: [java, kotlin]
+    message: "SHA-1 is vulnerable to collisions. Use SHA-256 or SHA-3."
+    severity: WARNING
+    patterns:
+      - pattern: MessageDigest.getInstance("SHA1")
+      - pattern: MessageDigest.getInstance("SHA-1")
+    metadata:
+      category: CRYPTO
+      masvs: MASTG-CRYPTO-2
+
+  - id: android-des-encryption
+    languages: [java, kotlin]
+    message: "DES encryption is insecure. Use AES with GCM mode."
+    severity: ERROR
+    patterns:
+      - pattern: Cipher.getInstance("DES")
+      - pattern: Cipher.getInstance("DES/...")
+      - pattern: KeyGenerator.getInstance("DES")
+    metadata:
+      category: CRYPTO
+      masvs: MASTG-CRYPTO-2
+
+  - id: android-ecb-mode
+    languages: [java, kotlin]
+    message: "AES in ECB mode is deterministic — no diffusion. Use AES/GCM/NoPadding."
+    severity: ERROR
+    patterns:
+      - pattern: Cipher.getInstance("AES/ECB/...")
+    metadata:
+      category: CRYPTO
+      masvs: MASTG-CRYPTO-3
+
+  - id: android-insecure-random
+    languages: [java, kotlin]
+    message: "java.util.Random is not cryptographically secure. Use SecureRandom."
+    severity: WARNING
+    patterns:
+      - pattern: new Random()
+      - pattern: new java.util.Random()
+    metadata:
+      category: CRYPTO
+      masvs: MASTG-CRYPTO-5
+
+  - id: android-hardcoded-key
+    languages: [java, kotlin]
+    message: "Hardcoded cryptographic key detected. Use Android Keystore."
+    severity: ERROR
+    patterns:
+      - pattern: |
+          SecretKeySpec($KEY, "AES")
+    metadata:
+      category: CRYPTO
+      masvs: MASTG-CRYPTO-1
+
+  # --- NETWORK ---
+
+  - id: android-cleartext-http
+    languages: [java, kotlin]
+    message: "HTTP connection without TLS. Use HTTPS for all network communication."
+    severity: ERROR
+    patterns:
+      - pattern: URL("http://...")
+      - pattern: HttpURLConnection
+    metadata:
+      category: NETWORK
+      masvs: MASTG-NETWORK-1
+
+  - id: android-trust-all-certificates
+    languages: [java, kotlin]
+    message: "Trust all certificates — vulnerable to man-in-the-middle attacks."
+    severity: ERROR
+    patterns:
+      - pattern: |
+          class $X implements X509TrustManager {
+            public void checkClientTrusted(...) {}
+            public void checkServerTrusted(...) {}
+            public X509Certificate[] getAcceptedIssuers() { return null; }
+          }
+    metadata:
+      category: NETWORK
+      masvs: MASTG-NETWORK-2
+
+  - id: android-ssl-error-ignore
+    languages: [java, kotlin]
+    message: "SSL error ignored — possible MITM attack vector."
+    severity: ERROR
+    patterns:
+      - pattern: onReceivedSslError($VIEW, $HANDLER, $ERROR) { $HANDLER.proceed(); }
+    metadata:
+      category: NETWORK
+      masvs: MASTG-NETWORK-2
+
+  # --- PLATFORM ---
+
+  - id: android-webview-js-enabled
+    languages: [java, kotlin]
+    message: "JavaScript enabled in WebView — XSS risk if loading untrusted content."
+    severity: WARNING
+    patterns:
+      - pattern: setJavaScriptEnabled(true)
+    metadata:
+      category: PLATFORM
+      masvs: MASTG-PLATFORM-3
+
+  - id: android-webview-js-interface
+    languages: [java, kotlin]
+    message: "addJavascriptInterface exposes Java methods to JavaScript — potential RCE on API < 17."
+    severity: ERROR
+    patterns:
+      - pattern: addJavascriptInterface($OBJ, $NAME)
+    metadata:
+      category: PLATFORM
+      masvs: MASTG-PLATFORM-3
+
+  - id: android-webview-file-access
+    languages: [java, kotlin]
+    message: "File access enabled in WebView — local file theft risk."
+    severity: WARNING
+    patterns:
+      - pattern: setAllowFileAccess(true)
+      - pattern: setAllowFileAccessFromFileURLs(true)
+      - pattern: setAllowUniversalAccessFromFileURLs(true)
+    metadata:
+      category: PLATFORM
+      masvs: MASTG-PLATFORM-3
+
+  - id: android-implicit-intent
+    languages: [java, kotlin]
+    message: "Implicit intent — can be intercepted by malicious apps. Use explicit intents."
+    severity: WARNING
+    patterns:
+      - pattern: startActivity(new Intent($ACTION))
+      - pattern: sendBroadcast(new Intent($ACTION))
+    metadata:
+      category: PLATFORM
+      masvs: MASTG-PLATFORM-5
+
+  - id: android-pending-intent-mutable
+    languages: [java, kotlin]
+    message: "Mutable PendingIntent — can be modified by other apps. Use FLAG_IMMUTABLE."
+    severity: ERROR
+    patterns:
+      - pattern: PendingIntent.getActivity($CTX, $REQ, $INTENT, 0)
+      - pattern: PendingIntent.getService($CTX, $REQ, $INTENT, 0)
+    metadata:
+      category: PLATFORM
+      masvs: MASTG-PLATFORM-5
+
+  - id: android-task-hijacking
+    languages: [java, kotlin]
+    message: "Activity without secure launchMode or taskAffinity — potential task hijacking."
+    severity: WARNING
+    patterns:
+      - pattern: launchMode="singleTask"
+    metadata:
+      category: PLATFORM
+      masvs: MASTG-PLATFORM-2
+
+  # --- CODE ---
+
+  - id: android-sql-injection
+    languages: [java, kotlin]
+    message: "SQL query with string concatenation — SQL injection risk. Use parameterized queries."
+    severity: ERROR
+    patterns:
+      - pattern: rawQuery("..." + ...)
+      - pattern: execSQL("..." + ...)
+    metadata:
+      category: CODE
+      masvs: MASTG-CODE-2
+
+  - id: android-sensitive-logging
+    languages: [java, kotlin]
+    message: "Potential sensitive data in log statements. Remove for production."
+    severity: WARNING
+    patterns:
+      - pattern: Log.d($TAG, $MSG + ...)
+      - pattern: Log.i($TAG, $MSG + ...)
+      - pattern: Log.v($TAG, $MSG + ...)
+    metadata:
+      category: CODE
+      masvs: MASTG-CODE-1
+
+  - id: android-tapjacking
+    languages: [java, kotlin]
+    message: "No filterTouchesWhenObscured — vulnerable to tapjacking overlays."
+    severity: WARNING
+    patterns:
+      - pattern: android:filterTouchesWhenObscured="false"
+    metadata:
+      category: CODE
+      masvs: MASTG-CODE-3
+
+  - id: android-webview-save-password
+    languages: [java, kotlin]
+    message: "WebView password saving enabled — credentials stored in plain text."
+    severity: WARNING
+    patterns:
+      - pattern: setSavePassword(true)
+    metadata:
+      category: CODE
+      masvs: MASTG-AUTH-4
+
+  # --- RESILIENCE ---
+
+  - id: android-debuggable-app
+    languages: [xml]
+    message: "App is debuggable — allows debugging on production devices."
+    severity: ERROR
+    patterns:
+      - pattern: android:debuggable="true"
+    metadata:
+      category: RESILIENCE
+      masvs: MASTG-RESILIENCE-4
+
+  - id: android-backup-enabled
+    languages: [xml]
+    message: "Backup enabled — app data can be extracted via adb backup."
+    severity: WARNING
+    patterns:
+      - pattern: android:allowBackup="true"
+    metadata:
+      category: RESILIENCE
+      masvs: MASTG-STORAGE-5
+
+  # --- PRIVACY ---
+
+  - id: android-clipboard-access
+    languages: [java, kotlin]
+    message: "Clipboard data accessed — sensitive data may leak to other apps."
+    severity: WARNING
+    patterns:
+      - pattern: ClipboardManager.getText()
+      - pattern: $CLIP.getPrimaryClip()
+    metadata:
+      category: PRIVACY
+      masvs: MASTG-PRIVACY-5
+
+  - id: android-device-id-access
+    languages: [java, kotlin]
+    message: "Device identifier accessed — tracking risk. Use advertising ID or instance ID."
+    severity: WARNING
+    patterns:
+      - pattern: Settings.Secure.getString(getContentResolver(), "android_id")
+      - pattern: getDeviceId()
+      - pattern: getSubscriberId()
+    metadata:
+      category: PRIVACY
+      masvs: MASTG-PRIVACY-5
+
+  - id: android-coarse-location
+    languages: [java, kotlin]
+    message: "Precise location requested — verify if actually needed."
+    severity: WARNING
+    patterns:
+      - pattern: requestLocationUpdates($PROVIDER, ...)
+    metadata:
+      category: PRIVACY
+      masvs: MASTG-PRIVACY-2

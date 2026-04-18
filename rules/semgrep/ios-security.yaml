@@ -1,0 +1,224 @@
+rules:
+  # ===== iOS SECURITY RULES (20) =====
+
+  # --- NETWORK (ATS) ---
+
+  - id: ios-ats-arbitrary-loads
+    languages: [xml]
+    message: "NSAllowsArbitraryLoads disables ATS — all HTTP connections allowed."
+    severity: ERROR
+    patterns:
+      - pattern: NSAllowsArbitraryLoads</key>
+    metadata:
+      category: NETWORK
+      masvs: MASTG-NETWORK-1
+
+  - id: ios-ats-arbitrary-web-content
+    languages: [xml]
+    message: "NSAllowsArbitraryLoadsInWebContent allows HTTP in web views."
+    severity: WARNING
+    patterns:
+      - pattern: NSAllowsArbitraryLoadsInWebContent</key>
+    metadata:
+      category: NETWORK
+      masvs: MASTG-NETWORK-1
+
+  - id: ios-ats-local-networking
+    languages: [xml]
+    message: "NSAllowsLocalNetworking allows HTTP on local networks — MITM risk."
+    severity: WARNING
+    patterns:
+      - pattern: NSAllowsLocalNetworking</key>
+    metadata:
+      category: NETWORK
+      masvs: MASTG-NETWORK-1
+
+  # --- STORAGE ---
+
+  - id: ios-keychain-always-accessible
+    languages: [swift, objc]
+    message: "kSecAttrAccessibleAlways — keychain data accessible even when device is locked."
+    severity: ERROR
+    patterns:
+      - pattern: kSecAttrAccessibleAlways
+    metadata:
+      category: STORAGE
+      masvs: MASTG-STORAGE-2
+
+  - id: ios-keychain-after-first-unlock
+    languages: [swift, objc]
+    message: "kSecAttrAccessibleAfterFirstUnlock — data accessible in background after first unlock."
+    severity: WARNING
+    patterns:
+      - pattern: kSecAttrAccessibleAfterFirstUnlock
+    metadata:
+      category: STORAGE
+      masvs: MASTG-STORAGE-2
+
+  - id: ios-userdefaults-sensitive
+    languages: [swift, objc]
+    message: "UserDefaults stores data unencrypted. Use Keychain for sensitive data."
+    severity: WARNING
+    patterns:
+      - pattern: UserDefaults.standard.set($VALUE, forKey: $KEY)
+    metadata:
+      category: STORAGE
+      masvs: MASTG-STORAGE-3
+
+  - id: ios-pasteboard-usage
+    languages: [swift, objc]
+    message: "UIPasteboard access — clipboard data is shared system-wide."
+    severity: WARNING
+    patterns:
+      - pattern: UIPasteboard.general
+      - pattern: generalPasteboard()
+    metadata:
+      category: STORAGE
+      masvs: MASTG-STORAGE-6
+
+  # --- CRYPTO ---
+
+  - id: ios-md5-hash
+    languages: [swift, objc]
+    message: "MD5 is cryptographically broken. Use SHA-256 via CryptoKit."
+    severity: ERROR
+    patterns:
+      - pattern: CC_MD5(...)
+      - pattern: .md5
+    metadata:
+      category: CRYPTO
+      masvs: MASTG-CRYPTO-2
+
+  - id: ios-sha1-hash
+    languages: [swift, objc]
+    message: "SHA-1 is vulnerable to collisions. Use SHA-256 via CryptoKit."
+    severity: WARNING
+    patterns:
+      - pattern: CC_SHA1(...)
+      - pattern: .sha1
+      - pattern: Insecure.SHA1
+    metadata:
+      category: CRYPTO
+      masvs: MASTG-CRYPTO-2
+
+  - id: ios-ecb-mode
+    languages: [swift, objc]
+    message: "ECB mode is deterministic — no diffusion. Use AES-GCM."
+    severity: ERROR
+    patterns:
+      - pattern: kCCModeECB
+    metadata:
+      category: CRYPTO
+      masvs: MASTG-CRYPTO-3
+
+  - id: ios-des-encryption
+    languages: [swift, objc]
+    message: "DES encryption is insecure. Use AES-256 with GCM mode."
+    severity: ERROR
+    patterns:
+      - pattern: kCCAlgorithmDES
+    metadata:
+      category: CRYPTO
+      masvs: MASTG-CRYPTO-2
+
+  # --- PLATFORM ---
+
+  - id: ios-uiwebview-deprecated
+    languages: [swift, objc]
+    message: "UIWebView is deprecated and has known security issues. Use WKWebView."
+    severity: ERROR
+    patterns:
+      - pattern: UIWebView
+    metadata:
+      category: PLATFORM
+      masvs: MASTG-PLATFORM-3
+
+  - id: ios-wkwebview-js-eval
+    languages: [swift, objc]
+    message: "JavaScript evaluation in WKWebView — potential injection point."
+    severity: WARNING
+    patterns:
+      - pattern: evaluateJavaScript(...)
+    metadata:
+      category: PLATFORM
+      masvs: MASTG-PLATFORM-3
+
+  - id: ios-url-scheme-oauth
+    languages: [swift, objc]
+    message: "Custom URL scheme for OAuth — vulnerable to scheme hijacking. Use universal links."
+    severity: WARNING
+    patterns:
+      - pattern: "openURL(_:)"
+      - pattern: "canOpenURL(_:)"
+    metadata:
+      category: PLATFORM
+      masvs: MASTG-PLATFORM-1
+
+  # --- AUTH ---
+
+  - id: ios-biometric-no-fallback
+    languages: [swift, objc]
+    message: "Biometric auth without secure fallback — ensure fallback isn't bypassable."
+    severity: WARNING
+    patterns:
+      - pattern: LAPolicyDeviceOwnerAuthenticationWithBiometrics
+    metadata:
+      category: AUTH
+      masvs: MASTG-AUTH-1
+
+  - id: ios-keychain-biometric-access
+    languages: [swift, objc]
+    message: "Keychain access with biometric — verify access control is properly configured."
+    severity: INFO
+    patterns:
+      - pattern: kSecAccessControlTouchIDAny
+      - pattern: kSecAccessControlTouchIDCurrentSet
+      - pattern: SecAccessControlCreateWithFlags
+    metadata:
+      category: AUTH
+      masvs: MASTG-AUTH-1
+
+  # --- CODE ---
+
+  - id: ios-nslog-sensitive
+    languages: [swift, objc]
+    message: "NSLog may output sensitive data. Remove for production builds."
+    severity: WARNING
+    patterns:
+      - pattern: NSLog(...)
+    metadata:
+      category: CODE
+      masvs: MASTG-CODE-1
+
+  - id: ios-print-sensitive
+    languages: [swift]
+    message: "print() statements may leak sensitive data in debug builds."
+    severity: INFO
+    patterns:
+      - pattern: print(...)
+    metadata:
+      category: CODE
+      masvs: MASTG-CODE-1
+
+  # --- RESILIENCE ---
+
+  - id: ios-jailbreak-check-missing
+    languages: [swift, objc]
+    message: "No jailbreak detection found. Consider adding jailbreak detection for sensitive apps."
+    severity: INFO
+    patterns:
+      - pattern: FileManager.default.fileExists(atPath: "/Applications/Cydia.app")
+      - pattern: FileManager.default.fileExists(atPath: "/usr/sbin/sshd")
+    metadata:
+      category: RESILIENCE
+      masvs: MASTG-RESILIENCE-1
+
+  - id: ios-anti-debug-missing
+    languages: [objc]
+    message: "ptrace anti-debug check found — good practice but can be bypassed."
+    severity: INFO
+    patterns:
+      - pattern: ptrace(...)
+    metadata:
+      category: RESILIENCE
+      masvs: MASTG-RESILIENCE-2

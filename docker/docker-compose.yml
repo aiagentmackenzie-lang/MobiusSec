@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  mobiussec:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: mobiussec
+    volumes:
+      - ../core:/app/core
+      - ../rules:/app/rules
+      - ./scans:/scans
+    environment:
+      - MOBIUSSEC_OUTPUT_DIR=/scans
+    entrypoint: ["mobius"]
+    command: ["--help"]
+
+  # API server (Phase 3)
+  # mobiussec-api:
+  #   build:
+  #     context: ..
+  #     dockerfile: docker/Dockerfile
+  #   container_name: mobiussec-api
+  #   ports:
+  #     - "3000:3000"
+  #   command: ["api", "--host", "0.0.0.0", "--port", "3000"]
