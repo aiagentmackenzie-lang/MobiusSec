@@ -228,6 +228,156 @@ def masvs(
 
 
 @app.command()
+def privacy(
+    app_path: Annotated[str, typer.Argument(help="Path to APK or IPA file")],
+) -> None:
+    """Show privacy analysis — data collection, SDK tracking, compliance."""
+
+    path = Path(app_path)
+    if not path.exists():
+        console.print(f"[red]Error: File not found: {app_path}[/red]")
+        raise typer.Exit(1)
+
+    platform = _detect_platform(path)
+    if platform == "unknown":
+        console.print(f"[red]Error: Unsupported file type.[/red]")
+        raise typer.Exit(1)
+
+    console.print()
+    console.print(Panel.fit(
+        "[bold]MobiusSec Privacy Analysis[/bold]",
+        border_style="bright_magenta",
+    ))
+
+    config = ScanConfig(app_path=path)
+    scanner = Scanner(config)
+    result = scanner.scan()
+
+    if not scanner.privacy_report:
+        console.print("[red]Privacy analysis not available.[/red]")
+        raise typer.Exit(1)
+
+    report = scanner.privacy_report
+
+    # Privacy score
+    score = report.get("privacy_score", 0)
+    score_color = "green" if score >= 70 else ("yellow" if score >= 40 else "red")
+    console.print(f"\n  🔒 Privacy Score: [{score_color}]{score}/100[/{score_color}]")
+
+    # Data collected
+    data_collected = report.get("data_collected", [])
+    if data_collected:
+        table = Table(title="📊 Data Collected", show_header=True, header_style="bold magenta")
+        table.add_column("Data Type", max_width=40)
+        table.add_column("Description", max_width=40)
+        table.add_column("Source", style="dim")
+        for d in data_collected[:20]:
+            table.add_row(d.get("type", ""), d.get("description", ""), d.get("source", ""))
+        console.print(table)
+    else:
+        console.print("  [green]No sensitive data collection detected.[/green]")
+
+    # Detected SDKs
+    detected_sdks = report.get("detected_sdks", [])
+    if detected_sdks:
+        table = Table(title="🔍 Tracking SDKs", show_header=True, header_style="bold yellow")
+        table.add_column("SDK", max_width=30)
+        table.add_column("Category", style="dim")
+        table.add_column("Description", max_width=50)
+        for sdk in detected_sdks:
+            cat_color = "red" if sdk["category"] in ("ad_networks", "social") else ("yellow" if sdk["category"] == "analytics" else "dim")
+            table.add_row(sdk["id"].split(".")[-1], f"[{cat_color}]{sdk['category']}[/{cat_color}]", sdk["description"]) 
+        console.print(table)
+
+    # Network endpoints
+    endpoints = report.get("network_endpoints", [])
+    if endpoints:
+        table = Table(title="🌐 Data Transmission Endpoints", show_header=True, header_style="bold cyan")
+        table.add_column("Endpoint")
+        table.add_column("Description", max_width=50)
+        for ep in endpoints:
+            table.add_row(ep["pattern"], ep["description"])
+        console.print(table)
+
+    # Compliance gaps
+    gaps = report.get("compliance_gaps", [])
+    if gaps:
+        console.print("\n  [bold red]⚖️ Compliance Gaps:[/bold red]")
+        for gap in gaps:
+            console.print(f"  [bold]{gap['name']}[/bold]")
+            for g in gap["gaps"]:
+                console.print(f"    ⚠️  {g}")
+    else:
+        console.print("\n  [green]✅ No major compliance gaps detected.[/green]")
+
+    # Privacy findings
+    privacy_findings = [f for f in result.findings if f.masvs_category == "PRIVACY"]
+    if privacy_findings:
+        console.print(f"\n  [yellow]⚠️  {len(privacy_findings)} privacy-related findings[/yellow]")
+
+
+@app.command()
+def sbom(
+    app_path: Annotated[str, typer.Argument(help="Path to APK or IPA file")],
+    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path")] = None,
+) -> None:
+    """Generate a Software Bill of Materials (CycloneDX format)."""
+
+    path = Path(app_path)
+    if not path.exists():
+        console.print(f"[red]Error: File not found: {app_path}[/red]")
+        raise typer.Exit(1)
+
+    platform = _detect_platform(path)
+    if platform == "unknown":
+        console.print(f"[red]Error: Unsupported file type.[/red]")
+        raise typer.Exit(1)
+
+    console.print()
+    console.print(Panel.fit(
+        "[bold]MobiusSec SBOM Generator[/bold]",
+        border_style="bright_cyan",
+    ))
+
+    config = ScanConfig(app_path=path)
+    scanner = Scanner(config)
+    scanner.scan()  # Need scan to populate SBOM
+
+    if not scanner.sbom:
+        console.print("[red]SBOM generation failed.[/red]")
+        raise typer.Exit(1)
+
+    components = scanner.sbom.get("components", [])
+
+    # Display components
+    table = Table(title="📦 Software Bill of Materials", show_header=True, header_style="bold cyan")
+    table.add_column("Component", max_width=30)
+    table.add_column("Version", style="dim")
+    table.add_column("Category")
+    table.add_column("Ecosystem", style="dim")
+
+    for comp in components:
+        table.add_row(
+            comp.get("name", "unknown"),
+            comp.get("version", "—"),
+            comp.get("category", "—"),
+            comp.get("ecosystem", "—"),
+        )
+
+    console.print(table)
+    console.print(f"\n  📦 Total components: {len(components)}")
+
+    # Output CycloneDX JSON
+    if output:
+        import json
+        out_path = Path(output)
+        out_path.write_text(json.dumps(scanner.sbom, indent=2, default=str))
+        console.print(f"  💾 CycloneDX SBOM written to: {out_path}")
+    else:
+        console.print("  [dim]Use --output to save as CycloneDX JSON[/dim]")
+
+
+@app.command()
 def version() -> None:
     """Show MobiusSec version."""
     from mobiussec import __version__

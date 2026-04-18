@@ -10,6 +10,10 @@ from mobiussec.extractor import Extractor
 from mobiussec.android_analyzer import AndroidAnalyzer
 from mobiussec.ios_analyzer import iOSAnalyzer
 from mobiussec.masvs_mapper import MASVSMapper
+from mobiussec.privacy_engine import PrivacyEngine
+from mobiussec.sbom_generator import SBOMGenerator
+from mobiussec.secrets_scanner import SecretsScanner
+from mobiussec.yara_engine import YARAEngine
 from mobiussec.models import (
     Finding,
     Platform,
@@ -27,6 +31,8 @@ class Scanner:
         self.extractor = Extractor(config.app_path)
         self.findings: list[Finding] = []
         self.errors: list[str] = []
+        self.privacy_report: dict | None = None
+        self.sbom: dict | None = None
 
     def scan(self) -> ScanResult:
         """Run a complete security scan."""
@@ -46,7 +52,7 @@ class Scanner:
         platform_str = self.extractor.platform
         platform = Platform(platform_str) if platform_str in ("android", "ios") else Platform.UNKNOWN
 
-        # 2. Analyze
+        # 2. Analyze (static)
         package_name = "unknown"
         app_name = "unknown"
         version = "unknown"
@@ -63,18 +69,38 @@ class Scanner:
             app_name = analyzer.app_name
             version = analyzer.version
 
-        # 3. Filter for quick mode
+        # 3. Secrets scanner
+        if not self.config.quick:
+            secrets_scanner = SecretsScanner(extracted_dir, platform)
+            self.findings.extend(secrets_scanner.scan())
+
+        # 4. YARA engine (packer/malware detection)
+        yara_engine = YARAEngine(extracted_dir, platform)
+        self.findings.extend(yara_engine.scan())
+
+        # 5. Privacy engine
+        if not self.config.quick:
+            privacy_engine = PrivacyEngine(extracted_dir, platform)
+            self.privacy_report = privacy_engine.analyze()
+            self.findings.extend(privacy_engine.findings)
+
+        # 6. SBOM generator
+        if not self.config.quick:
+            sbom_gen = SBOMGenerator(extracted_dir, platform)
+            self.sbom = sbom_gen.generate()
+
+        # 7. Filter for quick mode
         if self.config.quick:
             self.findings = [
                 f for f in self.findings
                 if f.severity in (Severity.CRITICAL, Severity.HIGH)
             ]
 
-        # 4. Map to MASVS
+        # 8. Map to MASVS
         mapper = MASVSMapper(platform)
         masvs_result = mapper.map_findings(self.findings)
 
-        # 5. Build result
+        # 9. Build result
         scan_time = time.time() - start_time
         result = ScanResult(
             app_path=str(self.config.app_path),
@@ -88,7 +114,7 @@ class Scanner:
             errors=self.errors,
         )
 
-        # 6. Cleanup
+        # 10. Cleanup
         self.extractor.cleanup()
 
         return result
