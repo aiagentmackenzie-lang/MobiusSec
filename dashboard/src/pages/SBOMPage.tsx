@@ -1,153 +1,171 @@
-const DEMO_COMPONENTS = [
-  { type: 'library', name: 'OkHttp3', version: '4.12.0', license: 'Apache-2.0', risk: 'low', purl: 'pkg:maven/com.squareup.okhttp3/okhttp@4.12.0', description: 'HTTP client' },
-  { type: 'library', name: 'Retrofit', version: '2.9.0', license: 'Apache-2.0', risk: 'low', purl: 'pkg:maven/com.squareup.retrofit2/retrofit@2.9.0', description: 'REST client' },
-  { type: 'library', name: 'Gson', version: '2.10.1', license: 'Apache-2.0', risk: 'low', purl: 'pkg:maven/com.google.code.gson/gson@2.10.1', description: 'JSON serialization' },
-  { type: 'library', name: 'Firebase Analytics', version: '21.5.0', license: 'Proprietary', risk: 'medium', purl: 'pkg:maven/com.google.firebase/firebase-analytics@21.5.0', description: 'Analytics SDK — tracks user behavior' },
-  { type: 'library', name: 'Facebook SDK', version: '16.1.0', license: 'Proprietary', risk: 'high', purl: 'pkg:maven/com.facebook.android/facebook-android-sdk@16.1.0', description: 'Social SDK — collects device info, advertising ID' },
-  { type: 'library', name: 'Glide', version: '4.16.0', license: 'BSD-3', risk: 'low', purl: 'pkg:maven/com.github.bumptech.glide/glide@4.16.0', description: 'Image loading' },
-  { type: 'library', name: 'Room', version: '2.6.1', license: 'Apache-2.0', risk: 'low', purl: 'pkg:maven/androidx.room/room-runtime@2.6.1', description: 'SQLite ORM' },
-  { type: 'library', name: 'Timber', version: '5.0.1', license: 'Apache-2.0', risk: 'low', purl: 'pkg:maven/com.jakewharton.timber/timber@5.0.1', description: 'Logging' },
-  { type: 'library', name: 'SQLCipher', version: '4.5.6', license: 'Apache-2.0', risk: 'low', purl: 'pkg:maven/net.zetetic/android-database-sqlcipher@4.5.6', description: 'Encrypted SQLite' },
-  { type: 'framework', name: 'AndroidX Core', version: '1.12.0', license: 'Apache-2.0', risk: 'none', purl: 'pkg:maven/androidx.core/core-ktx@1.12.0', description: 'Core Android extensions' },
-  { type: 'framework', name: 'Kotlin Stdlib', version: '1.9.22', license: 'Apache-2.0', risk: 'none', purl: 'pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@1.9.22', description: 'Kotlin standard library' },
-  { type: 'library', name: 'AppsFlyer', version: '6.12.2', license: 'Proprietary', risk: 'high', purl: 'pkg:maven/com.appsflyer/af-android-sdk@6.12.2', description: 'Attribution SDK — collects advertising ID, device info' },
+import { useState } from 'react';
+
+interface SBOMEntry {
+  name: string;
+  version: string;
+  type: 'direct' | 'transitive';
+  license: string;
+  language: string;
+  cves: CVEEntry[];
+  health: 'healthy' | 'outdated' | 'vulnerable';
+}
+
+interface CVEEntry {
+  id: string;
+  cvss: number;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  description: string;
+  patchedIn?: string;
+}
+
+const DEMO_SBOM: SBOMEntry[] = [
+  { name: 'okhttp3', version: '4.9.3', type: 'direct', license: 'Apache-2.0', language: 'Kotlin', cves: [{ id: 'CVE-2023-3635', cvss: 7.5, severity: 'high', description: 'HTTP request smuggling via malformed headers', patchedIn: '4.11.0' }], health: 'vulnerable' },
+  { name: 'retrofit', version: '2.9.0', type: 'direct', license: 'Apache-2.0', language: 'Kotlin', cves: [], health: 'healthy' },
+  { name: 'glide', version: '4.12.0', type: 'direct', license: 'BSD-3', language: 'Kotlin', cves: [{ id: 'CVE-2023-2305', cvss: 5.4, severity: 'medium', description: 'Path traversal in image loading', patchedIn: '4.14.2' }], health: 'outdated' },
+  { name: 'room-runtime', version: '2.5.2', type: 'direct', license: 'Apache-2.0', language: 'Kotlin', cves: [], health: 'healthy' },
+  { name: 'firebase-analytics', version: '21.3.0', type: 'direct', license: 'Proprietary', language: 'Kotlin', cves: [], health: 'healthy' },
+  { name: 'facebook-sdk', version: '14.1.0', type: 'direct', license: 'Proprietary', language: 'Kotlin', cves: [{ id: 'CVE-2023-3781', cvss: 9.1, severity: 'critical', description: 'Data exfiltration via SDK event logging', patchedIn: '16.1.0' }], health: 'vulnerable' },
+  { name: 'kotlinx-coroutines', version: '1.7.1', type: 'direct', license: 'Apache-2.0', language: 'Kotlin', cves: [], health: 'healthy' },
+  { name: 'gson', version: '2.10.1', type: 'direct', license: 'Apache-2.0', language: 'Java', cves: [], health: 'healthy' },
+  { name: 'okio', version: '3.3.0', type: 'transitive', license: 'Apache-2.0', language: 'Kotlin', cves: [], health: 'healthy' },
+  { name: 'androidx-core', version: '1.10.1', type: 'direct', license: 'Apache-2.0', language: 'Kotlin', cves: [], health: 'outdated' },
+  { name: 'material-components', version: '1.9.0', type: 'direct', license: 'Apache-2.0', language: 'Kotlin', cves: [], health: 'healthy' },
+  { name: 'leakcanary', version: '2.12', type: 'direct', license: 'Apache-2.0', language: 'Kotlin', cves: [], health: 'healthy' },
 ];
 
-const RISK_COLORS: Record<string, string> = {
-  high: 'text-red-400 bg-red-500/10',
-  medium: 'text-yellow-400 bg-yellow-500/10',
-  low: 'text-blue-400 bg-blue-500/10',
-  none: 'text-green-400 bg-green-500/10',
+const SEVERITY_STYLES: Record<string, string> = {
+  critical: 'bg-red-500/20 text-red-400 border-red-500/30',
+  high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  low: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
 };
 
+const HEALTH_STYLES: Record<string, string> = {
+  healthy: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  outdated: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  vulnerable: 'bg-red-500/20 text-red-400 border-red-500/30',
+};
+
+const HEALTH_ICONS: Record<string, string> = { healthy: '✅', outdated: '⚠️', vulnerable: '🚨' };
+
 export default function SBOMPage() {
-  const libCount = DEMO_COMPONENTS.filter((c) => c.type === 'library').length;
-  const frameworkCount = DEMO_COMPONENTS.filter((c) => c.type === 'framework').length;
-  const highRisk = DEMO_COMPONENTS.filter((c) => c.risk === 'high').length;
-  const proprietaryCount = DEMO_COMPONENTS.filter((c) => c.license === 'Proprietary').length;
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'direct' | 'transitive'>('all');
+  const [healthFilter, setHealthFilter] = useState<string>('all');
+
+  const allCVEs = DEMO_SBOM.flatMap((e) => e.cves.map((c) => ({ ...c, component: e.name })));
+  const totalComponents = DEMO_SBOM.length;
+  const vulnerableComponents = DEMO_SBOM.filter((e) => e.health === 'vulnerable').length;
+  const outdatedComponents = DEMO_SBOM.filter((e) => e.health === 'outdated').length;
+  const directCount = DEMO_SBOM.filter((e) => e.type === 'direct').length;
+  const transitiveCount = DEMO_SBOM.filter((e) => e.type === 'transitive').length;
+
+  const filtered = DEMO_SBOM.filter((e) => {
+    if (typeFilter !== 'all' && e.type !== typeFilter) return false;
+    if (healthFilter !== 'all' && e.health !== healthFilter) return false;
+    if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div>
         <h1 className="text-2xl font-bold text-white">📦 Software Bill of Materials</h1>
-        <div className="flex gap-2">
-          <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors">
-            📋 Export CycloneDX JSON
-          </button>
-          <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors">
-            📄 Export CycloneDX XML
-          </button>
+        <p className="text-slate-400 text-sm mt-1">Component inventory, vulnerabilities, and license compliance</p>
+      </div>
+
+      {/* Health Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-center">
+          <p className="text-2xl font-bold text-white">{totalComponents}</p>
+          <p className="text-xs text-slate-400">Components</p>
+        </div>
+        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-center">
+          <p className="text-2xl font-bold text-sky-400">{directCount}</p>
+          <p className="text-xs text-slate-400">Direct</p>
+        </div>
+        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-center">
+          <p className="text-2xl font-bold text-slate-400">{transitiveCount}</p>
+          <p className="text-xs text-slate-400">Transitive</p>
+        </div>
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-center">
+          <p className="text-2xl font-bold text-red-400">{vulnerableComponents}</p>
+          <p className="text-xs text-red-400">Vulnerable</p>
+        </div>
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-center">
+          <p className="text-2xl font-bold text-yellow-400">{outdatedComponents}</p>
+          <p className="text-xs text-yellow-400">Outdated</p>
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-slate-900 rounded-xl border border-slate-700 p-5 text-center">
-          <div className="text-3xl font-bold text-sky-400">{DEMO_COMPONENTS.length}</div>
-          <div className="text-sm text-slate-400 mt-1">Total Components</div>
-        </div>
-        <div className="bg-slate-900 rounded-xl border border-slate-700 p-5 text-center">
-          <div className="text-3xl font-bold text-white">{libCount}</div>
-          <div className="text-sm text-slate-400 mt-1">Libraries</div>
-          <div className="text-xs text-slate-500">{frameworkCount} frameworks</div>
-        </div>
-        <div className="bg-slate-900 rounded-xl border border-slate-700 p-5 text-center">
-          <div className="text-3xl font-bold text-red-400">{highRisk}</div>
-          <div className="text-sm text-slate-400 mt-1">High Risk</div>
-          <div className="text-xs text-red-400">Tracking SDKs</div>
-        </div>
-        <div className="bg-slate-900 rounded-xl border border-slate-700 p-5 text-center">
-          <div className="text-3xl font-bold text-yellow-400">{proprietaryCount}</div>
-          <div className="text-sm text-slate-400 mt-1">Proprietary Licenses</div>
-          <div className="text-xs text-slate-500">Requires review</div>
-        </div>
-      </div>
-
-      {/* License distribution */}
-      <div className="bg-slate-900 rounded-xl border border-slate-700 p-5">
-        <h2 className="text-lg font-semibold text-white mb-4">📊 License Distribution</h2>
-        <div className="flex gap-4">
-          {(['Apache-2.0', 'BSD-3', 'Proprietary', 'MIT'] as const).map((license) => {
-            const count = DEMO_COMPONENTS.filter((c) => c.license === license).length;
-            const pct = Math.round((count / DEMO_COMPONENTS.length) * 100);
-            const color = license === 'Proprietary' ? 'bg-yellow-500' : 'bg-sky-500';
-            return (
-              <div key={license} className="flex-1 bg-slate-800/50 rounded-lg p-3">
-                <div className="text-sm text-white font-medium">{license}</div>
-                <div className="text-2xl font-bold text-sky-400">{count}</div>
-                <div className="h-1.5 bg-slate-700 rounded-full mt-2 overflow-hidden">
-                  <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
+      {/* CVE Alerts */}
+      {allCVEs.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-white mb-3">🚨 CVE Alerts</h2>
+          <div className="space-y-2">
+            {allCVEs.map((cve) => (
+              <div key={cve.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-sm text-sky-400">{cve.id}</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium border ${SEVERITY_STYLES[cve.severity]}`}>{cve.severity}</span>
+                    <span className="text-xs text-slate-500">CVSS {cve.cvss}</span>
+                  </div>
+                  <p className="text-sm text-slate-300">{cve.description}</p>
+                  <p className="text-xs text-slate-500 mt-1">Component: <span className="text-slate-400">{cve.component}</span>{cve.patchedIn && <> · Patch: <span className="text-emerald-400">{cve.patchedIn}</span></>}</p>
                 </div>
-                <div className="text-xs text-slate-500 mt-1">{pct}%</div>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Component table */}
-      <div className="bg-slate-900 rounded-xl border border-slate-700 p-5">
-        <h2 className="text-lg font-semibold text-white mb-4">🔍 Component Inventory</h2>
-        <div className="overflow-x-auto">
+      {/* Library Inventory */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-white">📚 Library Inventory</h2>
+          <div className="flex gap-2">
+            <input type="text" placeholder="Search libraries..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 placeholder-slate-500 w-48" />
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as 'all' | 'direct' | 'transitive')} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300">
+              <option value="all">All types</option>
+              <option value="direct">Direct</option>
+              <option value="transitive">Transitive</option>
+            </select>
+            <select value={healthFilter} onChange={(e) => setHealthFilter(e.target.value)} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300">
+              <option value="all">All health</option>
+              <option value="healthy">Healthy</option>
+              <option value="outdated">Outdated</option>
+              <option value="vulnerable">Vulnerable</option>
+            </select>
+          </div>
+        </div>
+        <div className="bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-slate-400 border-b border-slate-700">
-                <th className="text-left py-2 px-3">Type</th>
-                <th className="text-left py-2 px-3">Name</th>
-                <th className="text-left py-2 px-3">Version</th>
-                <th className="text-left py-2 px-3">License</th>
-                <th className="text-left py-2 px-3">Description</th>
-                <th className="text-left py-2 px-3">Risk</th>
+              <tr className="border-b border-slate-700 text-slate-400 text-xs uppercase">
+                <th className="px-4 py-3 text-left">Component</th>
+                <th className="px-4 py-3 text-left">Version</th>
+                <th className="px-4 py-3 text-left">Type</th>
+                <th className="px-4 py-3 text-left">Language</th>
+                <th className="px-4 py-3 text-left">License</th>
+                <th className="px-4 py-3 text-center">CVEs</th>
+                <th className="px-4 py-3 text-left">Health</th>
               </tr>
             </thead>
             <tbody>
-              {DEMO_COMPONENTS.map((c) => (
-                <tr key={c.purl} className="border-b border-slate-800 hover:bg-slate-800/50">
-                  <td className="py-2 px-3">
-                    <span className={`px-2 py-0.5 rounded text-xs ${c.type === 'framework' ? 'bg-purple-500/20 text-purple-400' : 'bg-sky-500/20 text-sky-400'}`}>
-                      {c.type}
-                    </span>
-                  </td>
-                  <td className="py-2 px-3 text-white font-mono text-xs">{c.name}</td>
-                  <td className="py-2 px-3 text-slate-400 font-mono">{c.version}</td>
-                  <td className="py-2 px-3">
-                    <span className={`text-xs ${c.license === 'Proprietary' ? 'text-yellow-400' : 'text-slate-400'}`}>
-                      {c.license}
-                    </span>
-                  </td>
-                  <td className="py-2 px-3 text-slate-500 text-xs max-w-xs truncate">{c.description}</td>
-                  <td className="py-2 px-3">
-                    <span className={`px-2 py-0.5 rounded text-xs ${RISK_COLORS[c.risk] || RISK_COLORS.none}`}>
-                      {c.risk.toUpperCase()}
-                    </span>
-                  </td>
+              {filtered.map((e) => (
+                <tr key={e.name} className="border-b border-slate-700/50 hover:bg-slate-700/20">
+                  <td className="px-4 py-3 text-slate-200 font-medium">{e.name}</td>
+                  <td className="px-4 py-3 text-slate-400 font-mono text-xs">{e.version}</td>
+                  <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded ${e.type === 'direct' ? 'bg-sky-500/20 text-sky-400' : 'bg-slate-600/50 text-slate-400'}`}>{e.type}</span></td>
+                  <td className="px-4 py-3 text-slate-400 text-xs">{e.language}</td>
+                  <td className="px-4 py-3 text-slate-400 text-xs">{e.license}</td>
+                  <td className="px-4 py-3 text-center">{e.cves.length > 0 ? <span className="text-red-400 font-medium">{e.cves.length}</span> : <span className="text-slate-500">0</span>}</td>
+                  <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium border ${HEALTH_STYLES[e.health]}`}>{HEALTH_ICONS[e.health]} {e.health}</span></td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* CycloneDX metadata */}
-      <div className="bg-slate-900 rounded-xl border border-slate-700 p-5">
-        <h2 className="text-lg font-semibold text-white mb-4">📋 CycloneDX Metadata</h2>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-slate-500">Format:</span>
-            <span className="text-white ml-2">CycloneDX 1.6</span>
-          </div>
-          <div>
-            <span className="text-slate-500">Spec Version:</span>
-            <span className="text-white ml-2">1.6</span>
-          </div>
-          <div>
-            <span className="text-slate-500">Serial Number:</span>
-            <span className="text-white ml-2 font-mono">urn:uuid:f6f...</span>
-          </div>
-          <div>
-            <span className="text-slate-500">Generated:</span>
-            <span className="text-white ml-2">2026-04-18T16:30:00Z</span>
-          </div>
         </div>
       </div>
     </div>
