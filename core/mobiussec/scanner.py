@@ -78,6 +78,12 @@ class Scanner:
         yara_engine = YARAEngine(extracted_dir, platform)
         self.findings.extend(yara_engine.scan())
 
+        # 5. Cross-platform framework analysis
+        if not self.config.quick:
+            from mobiussec.cross_platform import CrossPlatformAnalyzer
+            xplat = CrossPlatformAnalyzer(extracted_dir, platform)
+            self.findings.extend(xplat.analyze())
+
         # 5. Privacy engine
         if not self.config.quick:
             privacy_engine = PrivacyEngine(extracted_dir, platform)

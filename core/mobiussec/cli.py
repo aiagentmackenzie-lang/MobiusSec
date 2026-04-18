@@ -17,6 +17,9 @@ from rich.text import Text
 from mobiussec import MASVS_CATEGORIES
 from mobiussec.models import ScanConfig, Severity, MASVSStatus
 from mobiussec.scanner import Scanner
+from mobiussec.reports import generate_html_report, generate_sarif_report, generate_markdown_report
+from mobiussec.diff_analyzer import DiffAnalyzer
+from mobiussec.remediation import RemediationEngine
 
 app = typer.Typer(
     name="mobius",
@@ -225,6 +228,187 @@ def masvs(
 
     if detail_table.rows:
         console.print(detail_table)
+
+
+@app.command()
+def diff(
+    app1: Annotated[str, typer.Argument(help="Path to first APK/IPA (older version)")],
+    app2: Annotated[str, typer.Argument(help="Path to second APK/IPA (newer version)")],
+) -> None:
+    """Compare two app versions for security differences."""
+    path1, path2 = Path(app1), Path(app2)
+    for p in [path1, path2]:
+        if not p.exists():
+            console.print(f"[red]Error: File not found: {p}[/red]")
+            raise typer.Exit(1)
+
+    console.print()
+    console.print(Panel.fit("[bold]MobiusSec Diff Analysis[/bold]", border_style="bright_magenta"))
+    console.print(f"  📦 v1: {path1.name}")
+    console.print(f"  📦 v2: {path2.name}")
+    console.print()
+
+    config1 = ScanConfig(app_path=path1)
+    config2 = ScanConfig(app_path=path2)
+
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console, transient=True) as progress:
+        progress.add_task(description="Scanning v1...", total=None)
+        scanner1 = Scanner(config1)
+        result1 = scanner1.scan()
+
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console, transient=True) as progress:
+        progress.add_task(description="Scanning v2...", total=None)
+        scanner2 = Scanner(config2)
+        result2 = scanner2.scan()
+
+    analyzer = DiffAnalyzer(result1, result2)
+    diff_result = analyzer.diff()
+
+    # Verdict
+    verdict = diff_result["verdict"]
+    console.print(f"  Verdict: {verdict}")
+    console.print()
+
+    # Summary
+    summary = diff_result["summary"]
+    table = Table(title="Version Comparison", show_header=True, header_style="bold cyan")
+    table.add_column("Metric")
+    table.add_column("v1", justify="right")
+    table.add_column("v2", justify="right")
+    table.add_column("Delta", justify="right")
+    table.add_row("Total findings", str(summary["v1"]["total_findings"]), str(summary["v2"]["total_findings"]), str(summary["delta"]["total"]))
+    table.add_row("Critical", str(summary["v1"]["critical"]), str(summary["v2"]["critical"]), str(summary["delta"]["critical"]), style="red" if summary["delta"]["critical"] > 0 else "green")
+    table.add_row("High", str(summary["v1"]["high"]), str(summary["v2"]["high"]), str(summary["delta"]["high"]), style="red" if summary["delta"]["high"] > 0 else "green")
+    console.print(table)
+
+    # New findings
+    added = diff_result["added"]
+    if added:
+        console.print(f"\n  [red]🆕 {len(added)} new findings:[/red]")
+        for f in added[:10]:
+            console.print(f"    • [{SEVERITY_COLORS.get(f['severity'], 'white')}]{f['severity'].upper()}[/{SEVERITY_COLORS.get(f['severity'], 'white')}] {f['title']}")
+
+    # Fixed findings
+    removed = diff_result["removed"]
+    if removed:
+        console.print(f"\n  [green]✅ {len(removed)} findings fixed:[/green]")
+        for f in removed[:10]:
+            console.print(f"    • {f['title']}")
+
+    # Severity changes
+    changes = diff_result["severity_changes"]
+    if changes:
+        console.print(f"\n  [yellow]🔄 {len(changes)} severity changes:[/yellow]")
+        for c in changes:
+            direction = "⬆️ worsened" if c["direction"] == "worse" else "⬇️ improved"
+            console.print(f"    • {c['id']}: {c['old_severity']} → {c['new_severity']} ({direction})")
+
+
+@app.command()
+def fix(
+    app_path: Annotated[str, typer.Argument(help="Path to APK or IPA file")],
+    finding_id: Annotated[Optional[str], typer.Option("--finding", "-f", help="Specific finding ID to get fix for")] = None,
+    ai: Annotated[bool, typer.Option("--ai", help="Use AI (Ollama) for remediation suggestions")] = False,
+) -> None:
+    """Get AI-powered remediation suggestions for findings."""
+    path = Path(app_path)
+    if not path.exists():
+        console.print(f"[red]Error: File not found: {app_path}[/red]")
+        raise typer.Exit(1)
+
+    console.print()
+    console.print(Panel.fit("[bold]MobiusSec Remediation Engine[/bold]", border_style="bright_green"))
+
+    config = ScanConfig(app_path=path)
+    scanner = Scanner(config)
+    result = scanner.scan()
+
+    if not result.findings:
+        console.print("  [green]No findings to fix! 🎉[/green]")
+        return
+
+    engine = RemediationEngine(use_ai=ai)
+
+    if finding_id:
+        # Fix a specific finding
+        finding = next((f for f in result.findings if f.id == finding_id), None)
+        if not finding:
+            console.print(f"[red]Finding {finding_id} not found[/red]")
+            raise typer.Exit(1)
+        remediation = engine.get_remediation(finding)
+        _display_remediation(remediation)
+    else:
+        # Show all prioritized fixes
+        console.print(f"  📋 {result.total_findings} findings to remediate\n")
+        remediations = engine.get_all_remediations(result.findings)
+
+        # Priority summary
+        priority_summary = engine.get_priority_summary(result.findings)
+        for level, items in priority_summary.items():
+            if items:
+                color = "red" if level in ("P0", "P1") else ("yellow" if level == "P2" else "dim")
+                console.print(f"  [{color}]{level}: {len(items)} items[/{color}]")
+
+        console.print()
+
+        # Show top 10 fixes
+        for rem in remediations[:10]:
+            _display_remediation(rem)
+
+
+def _display_remediation(rem: dict) -> None:
+    """Display a single remediation."""
+    console.print(f"  [bold]{rem.get('finding_id', '')}[/bold]: {rem.get('title', '')}")
+    console.print(f"    Priority: {rem.get('priority', 'P3')}")
+    if rem.get("fix"):
+        console.print(f"    Fix: {rem['fix']}")
+    if rem.get("code_sample"):
+        console.print(f"    [dim]Code: {rem['code_sample'][:100]}...[/dim]")
+    if rem.get("ai_fix"):
+        console.print(f"    🤖 AI: {rem['ai_fix'][:200]}")
+    console.print()
+
+
+@app.command()
+def report(
+    app_path: Annotated[str, typer.Argument(help="Path to APK or IPA file")],
+    format: Annotated[str, typer.Option("--format", "-f", help="Report format: html, sarif, markdown, json")] = "html",
+    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path")] = None,
+) -> None:
+    """Generate a security report (HTML, SARIF, Markdown, JSON)."""
+    path = Path(app_path)
+    if not path.exists():
+        console.print(f"[red]Error: File not found: {app_path}[/red]")
+        raise typer.Exit(1)
+
+    config = ScanConfig(app_path=path)
+    scanner = Scanner(config)
+    result = scanner.scan()
+
+    if format == "html":
+        content = generate_html_report(result)
+        out_path = Path(output or "mobiussec-report.html")
+        out_path.write_text(content)
+    elif format == "sarif":
+        sarif = generate_sarif_report(result)
+        import json
+        content = json.dumps(sarif, indent=2, default=str)
+        out_path = Path(output or "mobiussec-report.sarif.json")
+        out_path.write_text(content)
+    elif format == "markdown":
+        content = generate_markdown_report(result)
+        out_path = Path(output or "mobiussec-report.md")
+        out_path.write_text(content)
+    elif format == "json":
+        import json
+        content = json.dumps(result.to_dict(), indent=2, default=str)
+        out_path = Path(output or "mobiussec-report.json")
+        out_path.write_text(content)
+    else:
+        console.print(f"[red]Unknown format: {format}. Use html, sarif, markdown, or json.[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"  📄 Report saved to: [bold]{out_path}[/bold]")
 
 
 @app.command()
