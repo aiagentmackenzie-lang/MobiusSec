@@ -20,6 +20,10 @@ from mobiussec.scanner import Scanner
 from mobiussec.reports import generate_html_report, generate_sarif_report, generate_markdown_report
 from mobiussec.diff_analyzer import DiffAnalyzer
 from mobiussec.remediation import RemediationEngine
+from mobiussec.stix_export import export_stix_json
+from mobiussec.cicd import generate_github_actions, generate_gitlab_ci, generate_jenkinsfile, generate_all_cicd
+from mobiussec.deploy import get_profile, list_profiles, generate_docker_compose
+from mobiussec.portfolio_bridge import PortfolioBridge, BridgeConfig
 
 app = typer.Typer(
     name="mobius",
@@ -566,6 +570,121 @@ def version() -> None:
     """Show MobiusSec version."""
     from mobiussec import __version__
     console.print(f"MobiusSec v{__version__}")
+
+
+@app.command()
+def stix(
+    app_path: Annotated[str, typer.Argument(help="Path to APK or IPA file")],
+    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path")] = None,
+) -> None:
+    """Export findings as STIX 2.1 bundle."""
+    path = Path(app_path)
+    if not path.exists():
+        console.print(f"[red]Error: File not found: {app_path}[/red]")
+        raise typer.Exit(1)
+
+    config = ScanConfig(app_path=path)
+    scanner = Scanner(config)
+    result = scanner.scan()
+
+    stix_json = export_stix_json(result)
+    out_path = Path(output or "mobiussec-stix.json")
+    out_path.write_text(stix_json)
+    console.print(f"  📦 STIX 2.1 bundle exported to: [bold]{out_path}[/bold]")
+    console.print(f"  Objects: {len(json.loads(stix_json)['objects'])} STIX objects")
+
+
+@app.command(name="cicd")
+def cicd_cmd(
+    platform: Annotated[str, typer.Option("--platform", "-p", help="CI/CD platform: github, gitlab, jenkins, all")] = "all",
+    output_dir: Annotated[str, typer.Option("--output", "-o", help="Output directory")] = ".",
+) -> None:
+    """Generate CI/CD configuration files."""
+    out = Path(output_dir)
+    console.print()
+    console.print(Panel.fit("[bold]MobiusSec CI/CD Config Generator[/bold]", border_style="bright_cyan"))
+
+    if platform == "all":
+        results = generate_all_cicd(out)
+        for name, content in results.items():
+            console.print(f"  ✅ Generated: {name}")
+    elif platform == "github":
+        generate_github_actions(out)
+        console.print("  ✅ Generated: .github/workflows/mobiussec.yml")
+    elif platform == "gitlab":
+        generate_gitlab_ci(out)
+        console.print("  ✅ Generated: .gitlab-ci-mobiussec.yml")
+    elif platform == "jenkins":
+        generate_jenkinsfile(out)
+        console.print("  ✅ Generated: Jenkinsfile.mobiussec")
+    else:
+        console.print(f"[red]Unknown platform: {platform}. Use: github, gitlab, jenkins, all[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="deploy")
+def deploy_cmd(
+    profile_name: Annotated[str, typer.Argument(help="Deploy profile: local, docker, kubernetes, cloud-run, aws-fargate")],
+    output_dir: Annotated[str, typer.Option("--output", "-o", help="Output directory")] = ".",
+) -> None:
+    """Generate deploy configuration for a profile."""
+    console.print()
+    console.print(Panel.fit("[bold]MobiusSec Deploy Profile[/bold]", border_style="bright_magenta"))
+
+    try:
+        profile = get_profile(profile_name)
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"  Profile: [bold]{profile['name']}[/bold]")
+    console.print(f"  {profile['description']}")
+
+    if profile_name == "docker":
+        out = Path(output_dir)
+        generate_docker_compose(out)
+        console.print("  ✅ Generated: docker-compose.mobiussec.yml")
+
+
+@app.command(name="bridge")
+def bridge_cmd(
+    app_path: Annotated[str, typer.Argument(help="Path to APK or IPA file")],
+) -> None:
+    """Show portfolio tool recommendations based on findings."""
+    path = Path(app_path)
+    if not path.exists():
+        console.print(f"[red]Error: File not found: {app_path}[/red]")
+        raise typer.Exit(1)
+
+    config = ScanConfig(app_path=path)
+    scanner = Scanner(config)
+    result = scanner.scan()
+
+    console.print()
+    console.print(Panel.fit("[bold]MobiusSec Portfolio Bridge[/bold]", border_style="bright_yellow"))
+
+    bridge = PortfolioBridge()
+    categories = list(set(f.masvs_category for f in result.findings))
+
+    if not categories:
+        console.print("  No findings — no portfolio recommendations needed! 🎉")
+        return
+
+    recommended = bridge.get_recommended_tools(categories)
+
+    table = Table(title="Recommended Portfolio Tools", show_header=True, header_style="bold cyan")
+    table.add_column("Tool")
+    table.add_column("Categories")
+    table.add_column("Recommendation")
+
+    for tool in recommended:
+        table.add_row(
+            f"[bold]{tool['name']}[/bold]\n[dim]{tool['description'][:50]}...[/dim]",
+            ", ".join(tool["matching_categories"]),
+            tool["recommendation"][:80] + "...",
+        )
+
+    console.print(table)
 
 
 def _display_rich(result: "ScanResult", config: ScanConfig) -> None:
