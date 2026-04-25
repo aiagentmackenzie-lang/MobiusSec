@@ -195,9 +195,16 @@ class PrivacyEngine:
         if not manifest_path.exists():
             return
 
-        from lxml import etree
         try:
-            tree = etree.parse(str(manifest_path))
+            from lxml import etree as _etree
+        except ImportError:
+            _etree = None  # type: ignore[assignment]
+
+        if _etree is None:
+            return
+
+        try:
+            tree = _etree.parse(str(manifest_path))
             root = tree.getroot()
             ns = {"android": "http://schemas.android.com/apk/res/android"}
 

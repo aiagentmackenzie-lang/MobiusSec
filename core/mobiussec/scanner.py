@@ -84,29 +84,29 @@ class Scanner:
             xplat = CrossPlatformAnalyzer(extracted_dir, platform)
             self.findings.extend(xplat.analyze())
 
-        # 5. Privacy engine
+        # 6. Privacy engine
         if not self.config.quick:
             privacy_engine = PrivacyEngine(extracted_dir, platform)
             self.privacy_report = privacy_engine.analyze()
             self.findings.extend(privacy_engine.findings)
 
-        # 6. SBOM generator
+        # 7. SBOM generator
         if not self.config.quick:
             sbom_gen = SBOMGenerator(extracted_dir, platform)
             self.sbom = sbom_gen.generate()
 
-        # 7. Filter for quick mode
+        # 8. Filter for quick mode
         if self.config.quick:
             self.findings = [
                 f for f in self.findings
                 if f.severity in (Severity.CRITICAL, Severity.HIGH)
             ]
 
-        # 8. Map to MASVS
+        # 9. Map to MASVS
         mapper = MASVSMapper(platform)
         masvs_result = mapper.map_findings(self.findings)
 
-        # 9. Build result
+        # 10. Build result
         scan_time = time.time() - start_time
         result = ScanResult(
             app_path=str(self.config.app_path),
@@ -120,7 +120,7 @@ class Scanner:
             errors=self.errors,
         )
 
-        # 10. Cleanup
+        # 11. Cleanup
         self.extractor.cleanup()
 
         return result

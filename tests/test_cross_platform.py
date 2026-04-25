@@ -71,3 +71,45 @@ const getToken = async () => {
             analyzer = CrossPlatformAnalyzer(tmp_path, Platform.ANDROID)
             findings = analyzer.analyze()
             assert "react_native" in analyzer.detected_frameworks
+
+    def test_unique_finding_ids_flutter(self):
+        """Bug fix: Multiple files matching same pattern must produce unique IDs."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            assets = tmp_path / "flutter_assets"
+            assets.mkdir()
+            (assets / "kernel_blob.bin").write_text("flutter")
+
+            # Create multiple Dart files with the same pattern (SharedPreferences)
+            dart_dir = tmp_path / "lib"
+            dart_dir.mkdir()
+            for i in range(5):
+                (dart_dir / f"storage_{i}.dart").write_text(
+                    "SharedPreferences.getInstance();"
+                )
+
+            analyzer = CrossPlatformAnalyzer(tmp_path, Platform.ANDROID)
+            findings = analyzer.analyze()
+
+            # All finding IDs should be unique
+            ids = [f.id for f in findings if f.id.startswith("FLUTTER-")]
+            assert len(ids) == len(set(ids)), f"Duplicate IDs found: {ids}"
+
+    def test_unique_finding_ids_react_native(self):
+        """Bug fix: Multiple files matching same pattern must produce unique IDs."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            (tmp_path / "index.android.bundle").write_text("// RN bundle")
+
+            # Create multiple JS files with the same pattern (AsyncStorage)
+            for i in range(5):
+                (tmp_path / f"app_{i}.js").write_text(
+                    "AsyncStorage.getItem('key');"
+                )
+
+            analyzer = CrossPlatformAnalyzer(tmp_path, Platform.ANDROID)
+            findings = analyzer.analyze()
+
+            # All finding IDs should be unique
+            ids = [f.id for f in findings if f.id.startswith("RN-")]
+            assert len(ids) == len(set(ids)), f"Duplicate IDs found: {ids}"

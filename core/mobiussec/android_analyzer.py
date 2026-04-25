@@ -6,7 +6,10 @@ import re
 from pathlib import Path
 from typing import Any
 
-from lxml import etree
+try:
+    from lxml import etree
+except ImportError:
+    etree = None  # type: ignore[assignment]
 
 from mobiussec import (
     MASVS_STORAGE,
@@ -118,6 +121,8 @@ class AndroidAnalyzer:
 
     def _parse_manifest(self) -> None:
         """Parse AndroidManifest.xml."""
+        if etree is None:
+            return
         if self.manifest_path.exists():
             try:
                 self._manifest_tree = etree.parse(str(self.manifest_path))
@@ -279,6 +284,8 @@ class AndroidAnalyzer:
 
     def _parse_network_security_config(self, config_path: Path) -> None:
         """Parse network_security_config.xml for insecure settings."""
+        if etree is None:
+            return
         try:
             tree = etree.parse(str(config_path))
             root = tree.getroot()

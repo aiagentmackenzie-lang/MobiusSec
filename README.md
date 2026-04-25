@@ -12,7 +12,7 @@ MobiusSec is a developer-first mobile security platform that tests both Android 
 - 🚀 **CI/CD-Native** — GitHub Action, quality gates, non-blocking by default
 - 🧠 **AI Remediation** — Local Ollama-powered fix suggestions
 - 📦 **SBOM Generation** — Dynamic SBOM from mobile binaries (CycloneDX)
-- 🇧🇷 **Brazil-First** — LGPD compliance, Portuguese, Pix fraud detection
+- 🇧🇷 **Brazil-Ready** — LGPD compliance mapping, Pix fraud detection patterns planned
 
 ## Quick Start
 
@@ -34,6 +34,12 @@ mobius scan app.apk --gate L1 --fail-on high
 
 # MASVS compliance report
 mobius masvs app.ipa
+
+# MASVS with gate check
+mobius masvs app.ipa --gate L1
+
+# Quick MASVS scan (critical/high only)
+mobius masvs app.apk --quick
 ```
 
 ## Architecture
@@ -59,6 +65,23 @@ mobius scan app.apk
 | CODE | Code-level security |
 | RESILIENCE | Anti-RE & anti-tampering |
 | PRIVACY | Privacy controls |
+
+## All Commands
+
+| Command | Description |
+|---------|-------------|
+| `mobius scan` | Scan APK/IPA for vulnerabilities |
+| `mobius masvs` | MASVS 2.0 compliance report |
+| `mobius diff` | Compare two app versions |
+| `mobius fix` | AI-powered remediation suggestions |
+| `mobius report` | Generate HTML/SARIF/Markdown/JSON report |
+| `mobius privacy` | Privacy analysis (SDK tracking, LGPD/GDPR/CCPA) |
+| `mobius sbom` | Generate CycloneDX SBOM |
+| `mobius stix` | Export findings as STIX 2.1 bundle |
+| `mobius cicd` | Generate CI/CD configs (GitHub/GitLab/Jenkins) |
+| `mobius deploy` | Generate deploy configs (local/Docker/K8s/cloud) |
+| `mobius bridge` | Portfolio tool recommendations |
+| `mobius version` | Show version |
 
 ## License
 

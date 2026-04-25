@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 from typing import Any
@@ -119,16 +120,18 @@ class CrossPlatformAnalyzer:
         """Analyze Flutter/Dart source for security issues."""
         source_files = list(self.extracted_dir.rglob("*.dart"))
 
-        self.findings.append(Finding(
-            id="XPLAT-FLUTTER-001",
-            title="Flutter framework detected",
-            description="App is built with Flutter. Cross-platform apps may have framework-specific security considerations.",
-            severity=Severity.INFO,
-            masvs_category=MASVS_CODE,
-            platform=self.platform,
-            remediation="Ensure Flutter security best practices are followed. Use flutter_secure_storage for sensitive data.",
-        ))
+        if source_files:
+            self.findings.append(Finding(
+                id="XPLAT-FLUTTER-001",
+                title="Flutter framework detected",
+                description="App is built with Flutter. Cross-platform apps may have framework-specific security considerations.",
+                severity=Severity.INFO,
+                masvs_category=MASVS_CODE,
+                platform=self.platform,
+                remediation="Ensure Flutter security best practices are followed. Use flutter_secure_storage for sensitive data.",
+            ))
 
+        seen_ids: set[str] = set()
         for src_file in source_files[:200]:
             try:
                 content = src_file.read_text(errors="ignore")
@@ -136,8 +139,14 @@ class CrossPlatformAnalyzer:
 
                 for pattern, desc, severity, category in FLUTTER_PATTERNS:
                     if re.search(pattern, content):
+                        # Generate unique ID using pattern + relative path hash
+                        unique_hash = hashlib.md5(f"{pattern}:{rel_path}".encode()).hexdigest()[:8]
+                        finding_id = f"FLUTTER-{pattern[:10].replace('(', '').replace('.', '-')}-{unique_hash}"
+                        if finding_id in seen_ids:
+                            continue
+                        seen_ids.add(finding_id)
                         self.findings.append(Finding(
-                            id=f"FLUTTER-{pattern[:10].replace('(', '').replace('.', '-')}",
+                            id=finding_id,
                             title=f"Flutter: {desc}",
                             description=f"Found in {rel_path}. {desc}.",
                             severity=severity,
@@ -171,6 +180,7 @@ class CrossPlatformAnalyzer:
             remediation="Enable Hermes engine with code obfuscation. Strip console logs in production. Use react-native-sensitive-info for secure storage.",
         ))
 
+        seen_ids: set[str] = set()
         for src_file in source_files[:200]:
             try:
                 content = src_file.read_text(errors="ignore")
@@ -178,8 +188,13 @@ class CrossPlatformAnalyzer:
 
                 for pattern, desc, severity, category in REACT_NATIVE_PATTERNS:
                     if re.search(pattern, content):
+                        unique_hash = hashlib.md5(f"{pattern}:{rel_path}".encode()).hexdigest()[:8]
+                        finding_id = f"RN-{pattern[:10].replace('(', '').replace('.', '-')}-{unique_hash}"
+                        if finding_id in seen_ids:
+                            continue
+                        seen_ids.add(finding_id)
                         self.findings.append(Finding(
-                            id=f"RN-{pattern[:10].replace('(', '').replace('.', '-')}",
+                            id=finding_id,
                             title=f"React Native: {desc}",
                             description=f"Found in {rel_path}. {desc}.",
                             severity=severity,

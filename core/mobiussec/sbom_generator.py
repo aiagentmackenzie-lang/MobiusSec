@@ -292,6 +292,12 @@ class SBOMGenerator:
 
     def _extract_version_from_binary(self, binary_path: Path) -> str:
         """Try to extract version from a binary using strings."""
+        import shutil
+
+        # Check if strings command is available
+        if not shutil.which("strings"):
+            return ""
+
         import subprocess
         try:
             result = subprocess.run(

@@ -182,9 +182,16 @@ class Extractor:
                 return {}
 
     def parse_xml(self, xml_path: Path) -> object:
-        """Parse an XML file using lxml."""
-        from lxml import etree
+        """Parse an XML file using lxml (falls back to stdlib xml.etree)."""
         try:
-            return etree.parse(str(xml_path))
+            from lxml import etree as _etree
+            return _etree.parse(str(xml_path))
+        except ImportError:
+            # Fallback to stdlib xml.etree.ElementTree
+            import xml.etree.ElementTree as ET
+            try:
+                return ET.parse(str(xml_path))
+            except Exception:
+                return None
         except Exception:
             return None

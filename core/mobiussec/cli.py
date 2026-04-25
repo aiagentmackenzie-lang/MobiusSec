@@ -135,6 +135,9 @@ def scan(
 @app.command()
 def masvs(
     app_path: Annotated[str, typer.Argument(help="Path to APK or IPA file")],
+    quick: Annotated[bool, typer.Option("--quick", "-q", help="Quick scan — critical/high findings only")] = False,
+    gate: Annotated[Optional[str], typer.Option("--gate", "-g", help="MASVS gate level: L1 or L2")] = None,
+    fail_on: Annotated[str, typer.Option("--fail-on", help="Fail on severity: critical, high, medium, low")] = "high",
 ) -> None:
     """Show OWASP MASVS 2.0 compliance status for an app."""
 
@@ -154,7 +157,12 @@ def masvs(
         border_style="bright_blue",
     ))
 
-    config = ScanConfig(app_path=path)
+    config = ScanConfig(
+        app_path=path,
+        quick=quick,
+        gate_level=gate or "",
+        fail_on=fail_on,
+    )
     scanner = Scanner(config)
 
     with Progress(
@@ -169,6 +177,15 @@ def masvs(
     if not result.masvs_result:
         console.print("[red]No MASVS result available.[/red]")
         raise typer.Exit(1)
+
+    # Gate check
+    if gate:
+        gate_code = scanner.check_gate(result)
+        if gate_code != 0:
+            console.print(f"\n[bold red]🚧 MASVS {gate.upper()} gate: FAILED[/bold red]")
+            raise typer.Exit(1)
+        else:
+            console.print(f"\n[bold green]✅ MASVS {gate.upper()} gate: PASSED[/bold green]")
 
     # MASVS compliance table
     table = Table(title="OWASP MASVS 2.0 Compliance", show_header=True, header_style="bold cyan")
