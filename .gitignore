@@ -24,3 +24,7 @@ htmlcov/
 
 # Node
 node_modules/
+
+# Project internal docs
+BUG_TRACKER.md
+PRODUCTION_READINESS_PLAN.md
