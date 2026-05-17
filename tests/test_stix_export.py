@@ -1,6 +1,5 @@
 """Tests for STIX 2.1 export."""
 
-import pytest
 
 from mobiussec.stix_export import export_stix, export_stix_json
 from mobiussec.models import Finding, ScanResult, Severity, Platform

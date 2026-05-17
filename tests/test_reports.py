@@ -1,6 +1,5 @@
 """Tests for report generators."""
 
-import pytest
 
 from mobiussec.reports import generate_html_report, generate_sarif_report, generate_markdown_report
 from mobiussec.models import Finding, ScanResult, Severity, Platform

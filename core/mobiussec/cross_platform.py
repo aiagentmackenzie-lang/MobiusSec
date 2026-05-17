@@ -5,9 +5,8 @@ from __future__ import annotations
 import hashlib
 import re
 from pathlib import Path
-from typing import Any
 
-from mobiussec import MASVS_CODE, MASVS_PLATFORM, MASVS_RESILIENCE
+from mobiussec import MASVS_CODE, MASVS_RESILIENCE
 from mobiussec.models import Finding, Severity, Platform
 
 

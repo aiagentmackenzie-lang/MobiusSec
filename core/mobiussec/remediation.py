@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import subprocess
-from pathlib import Path
 from typing import Any
 
-from mobiussec.models import Finding, Severity, Platform, MASVSStatus
+from mobiussec.models import Finding, Severity
 
 # Static remediation database — works without any AI model
 STATIC_REMEDIATIONS: dict[str, dict[str, Any]] = {
@@ -46,7 +44,7 @@ STATIC_REMEDIATIONS: dict[str, dict[str, Any]] = {
 }
 
 # Category-level remediation guidance
-CATEGORY_REMEDIATIONS: dict[str, dict[str, str]] = {
+CATEGORY_REMEDIATIONS: dict[str, dict[str, Any]] = {
     "STORAGE": {
         "title": "Secure Data Storage",
         "guidance": "Use platform-specific secure storage: Android Keystore / EncryptedSharedPreferences, iOS Keychain. Never store sensitive data in SharedPreferences, UserDefaults, or plain files. Encrypt SQLite databases with SQLCipher.",

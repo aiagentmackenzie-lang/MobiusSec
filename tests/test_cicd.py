@@ -3,7 +3,6 @@
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from mobiussec.cicd import generate_github_actions, generate_gitlab_ci, generate_jenkinsfile, generate_all_cicd
 

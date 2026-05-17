@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
 
 try:
     from lxml import etree
 except ImportError:
-    etree = None  # type: ignore[assignment]
+    etree = None
 
 from mobiussec import (
     MASVS_STORAGE,
@@ -19,7 +18,7 @@ from mobiussec import (
     MASVS_CODE,
     MASVS_RESILIENCE,
 )
-from mobiussec.models import Finding, Severity, Platform, MASVSStatus
+from mobiussec.models import Finding, Severity, Platform
 
 
 # Dangerous permission categories
@@ -159,9 +158,12 @@ class AndroidAnalyzer:
             return
 
         ns = {"android": "http://schemas.android.com/apk/res/android"}
+        app_elem = self._manifest_root.find("application")
+        if app_elem is None:
+            return
 
         # Check for debuggable
-        debuggable = self._manifest_root.get(f"{{{ns['android']}}}debuggable", "")
+        debuggable = app_elem.get(f"{{{ns['android']}}}debuggable", "")
         if debuggable.lower() == "true":
             self._add_finding(
                 "AND-001",
@@ -278,7 +280,10 @@ class AndroidAnalyzer:
         # Check for network security config file
         net_sec_config = app_elem.get(f"{{{ns['android']}}}networkSecurityConfig", "")
         if net_sec_config:
-            config_path = self.extracted_dir / "res" / "xml" / net_sec_config.split("/")[-1]
+            config_name = net_sec_config.split("/")[-1]
+            if not config_name.endswith(".xml"):
+                config_name += ".xml"
+            config_path = self.extracted_dir / "res" / "xml" / config_name
             if config_path.exists():
                 self._parse_network_security_config(config_path)
 
@@ -289,7 +294,6 @@ class AndroidAnalyzer:
         try:
             tree = etree.parse(str(config_path))
             root = tree.getroot()
-            ns = {}
 
             # Check for cleartext traffic permitted
             for elem in root.iter():
@@ -539,7 +543,7 @@ class AndroidAnalyzer:
     def package_name(self) -> str:
         """Extract package name from manifest."""
         if self._manifest_root is not None:
-            return self._manifest_root.get("package", "unknown")
+            return str(self._manifest_root.get("package", "unknown"))
         return "unknown"
 
     @property
@@ -555,4 +559,16 @@ class AndroidAnalyzer:
                         return elem.text or "unknown"
             except Exception:
                 pass
+        return "unknown"
+
+    @property
+    def version(self) -> str:
+        """Extract version name from manifest."""
+        if self._manifest_root is not None:
+            version = self._manifest_root.get("versionName", "")
+            if not version and etree is not None:
+                nsmap = self._manifest_root.nsmap if hasattr(self._manifest_root, "nsmap") else {}
+                android_ns = nsmap.get("android", "http://schemas.android.com/apk/res/android")
+                version = self._manifest_root.get(f"{{{android_ns}}}versionName", "")
+            return version or "unknown"
         return "unknown"

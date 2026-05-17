@@ -1,6 +1,5 @@
 """Tests for CLI commands — integration tests using Typer CliRunner."""
 
-import pytest
 import tempfile
 import zipfile
 from pathlib import Path

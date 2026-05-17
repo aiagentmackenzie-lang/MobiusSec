@@ -1,6 +1,5 @@
 """Tests for MASVS mapper."""
 
-import pytest
 from mobiussec.masvs_mapper import MASVSMapper, MASVS_TESTS
 from mobiussec.models import Finding, MASVSStatus, Platform, Severity
 

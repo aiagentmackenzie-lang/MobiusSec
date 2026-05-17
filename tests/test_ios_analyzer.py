@@ -1,7 +1,6 @@
 """Tests for iOS analyzer."""
 
 import plistlib
-import pytest
 import tempfile
 from pathlib import Path
 

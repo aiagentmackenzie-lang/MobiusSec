@@ -1,9 +1,6 @@
 """Tests for remediation engine."""
 
-import tempfile
-from pathlib import Path
 
-import pytest
 
 from mobiussec.remediation import RemediationEngine, STATIC_REMEDIATIONS, CATEGORY_REMEDIATIONS, SEVERITY_PRIORITY
 from mobiussec.models import Finding, Severity, Platform

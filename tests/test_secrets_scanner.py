@@ -3,7 +3,6 @@
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from mobiussec.secrets_scanner import SecretsScanner, SECRET_VALIDATORS
 from mobiussec.models import Platform, Severity

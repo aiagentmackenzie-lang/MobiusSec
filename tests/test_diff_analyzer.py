@@ -1,9 +1,8 @@
 """Tests for diff analyzer."""
 
-import pytest
 
 from mobiussec.diff_analyzer import DiffAnalyzer
-from mobiussec.models import Finding, ScanResult, MASVSResult, Severity, Platform
+from mobiussec.models import Finding, ScanResult, Severity, Platform
 
 
 class TestDiffAnalyzer:

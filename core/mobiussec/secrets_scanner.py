@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any
 
-from mobiussec import MASVS_CRYPTO, MASVS_CODE
+from mobiussec import MASVS_CRYPTO
 from mobiussec.models import Finding, Severity, Platform
 
 
 # High-confidence secret patterns with validation
-SECRET_VALIDATORS = {
+SECRET_VALIDATORS: dict[str, Any] = {
     # AWS keys have specific formats
     "aws_access_key": {
         "pattern": r"AKIA[0-9A-Z]{16}",
@@ -239,7 +240,7 @@ class SecretsScanner:
                 end = min(len(lines), i + context_lines + 1)
                 snippet_lines = lines[start:end]
                 # Mask the actual secret
-                masked = [re.sub(re.escape(match), "***REDACTED***", l) for l in snippet_lines]
+                masked = [re.sub(re.escape(match), "***REDACTED***", line) for line in snippet_lines]
                 return "\n".join(masked)
         return ""
 

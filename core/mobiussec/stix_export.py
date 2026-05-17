@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from mobiussec.models import ScanResult, Finding, Severity
+from mobiussec.models import ScanResult, Severity
 
 
 def _make_id(stix_type: str) -> str:
@@ -30,7 +30,7 @@ def _severity_to_stix(severity: Severity) -> str:
 def export_stix(result: ScanResult) -> dict[str, Any]:
     """Export scan results as a STIX 2.1 bundle."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    objects: list[dict] = []
+    objects: list[dict[str, Any]] = []
 
     # 1. Identity (MobiusSec as the tool)
     identity_id = _make_id("identity")
@@ -68,7 +68,7 @@ def export_stix(result: ScanResult) -> dict[str, Any]:
         vuln_id = _make_id("vulnerability")
         vulnerability_ids.append(vuln_id)
 
-        vuln = {
+        vuln: dict[str, Any] = {
             "type": "vulnerability",
             "spec_version": "2.1",
             "id": vuln_id,

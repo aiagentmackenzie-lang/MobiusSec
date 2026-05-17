@@ -8,9 +8,7 @@ from typing import Any
 
 from mobiussec import (
     MASVS_PRIVACY,
-    MASVS_STORAGE,
     MASVS_NETWORK,
-    MASVS_PLATFORM,
 )
 from mobiussec.models import Finding, Severity, Platform
 
@@ -198,7 +196,7 @@ class PrivacyEngine:
         try:
             from lxml import etree as _etree
         except ImportError:
-            _etree = None  # type: ignore[assignment]
+            _etree = None
 
         if _etree is None:
             return
@@ -348,8 +346,6 @@ class PrivacyEngine:
 
     def _check_overprivileged_permissions(self) -> None:
         """Check if app requests more permissions than it likely uses."""
-        requested = {d["type"] for d in self.data_collected if d["source"] in ("manifest", "Info.plist")}
-
         # Heuristic: apps requesting 5+ sensitive data types are likely over-privileged
         sensitive_count = sum(1 for d in self.data_collected if d["source"] in ("manifest", "Info.plist"))
 

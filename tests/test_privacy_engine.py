@@ -4,10 +4,9 @@ import plistlib
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from mobiussec.privacy_engine import PrivacyEngine, TRACKING_SDKS, PRIVACY_REGULATIONS
-from mobiussec.models import Platform, Severity
+from mobiussec.models import Platform
 
 
 class TestPrivacyEngine:

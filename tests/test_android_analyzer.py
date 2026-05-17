@@ -1,11 +1,10 @@
 """Tests for Android analyzer."""
 
-import pytest
 import tempfile
 from pathlib import Path
-from lxml import etree
 
 from mobiussec.android_analyzer import AndroidAnalyzer, DANGEROUS_PERMISSIONS, INSECURE_CRYPTO_PATTERNS
+from mobiussec.models import Severity
 
 
 class TestAndroidAnalyzer:
@@ -37,9 +36,8 @@ class TestAndroidAnalyzer:
             tmp_path = Path(tmp)
             manifest_content = """<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.test.app"
-    android:debuggable="true">
-    <application android:allowBackup="true" android:usesCleartextTraffic="true">
+    package="com.test.app">
+    <application android:allowBackup="true" android:usesCleartextTraffic="true" android:debuggable="true">
     </application>
 </manifest>"""
             self._create_manifest(manifest_content, tmp_path)
@@ -68,7 +66,3 @@ class TestAndroidAnalyzer:
             analyzer = AndroidAnalyzer(tmp_path)
             analyzer._parse_manifest()
             assert analyzer.package_name == "com.example.myapp"
-
-
-# Need Severity for the test
-from mobiussec.models import Severity

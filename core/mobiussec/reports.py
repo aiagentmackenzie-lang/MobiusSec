@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from mobiussec import MASVS_CATEGORIES
-from mobiussec.models import ScanResult, Severity, MASVSStatus
+from mobiussec.models import ScanResult, Severity
 
 
 SEVERITY_COLORS = {
@@ -147,8 +145,8 @@ def generate_html_report(result: ScanResult) -> str:
 
 def generate_sarif_report(result: ScanResult) -> dict[str, Any]:
     """Generate a SARIF (Static Analysis Results Interchange Format) report."""
-    rules: list[dict] = []
-    results_list: list[dict] = []
+    rules: list[dict[str, Any]] = []
+    results_list: list[dict[str, Any]] = []
     seen_rules: set[str] = set()
 
     for f in result.findings:
@@ -196,22 +194,22 @@ def generate_markdown_report(result: ScanResult) -> str:
     """Generate a Markdown security report."""
     platform_name = "Android" if result.platform.value == "android" else "iOS"
     lines = [
-        f"# MobiusSec Security Report",
-        f"",
+        "# MobiusSec Security Report",
+        "",
         f"**{result.app_name}** ({result.package_name}) · Version {result.version} · {platform_name}",
         f"Scanned: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
-        f"",
-        f"## Summary",
-        f"",
-        f"| Severity | Count |",
-        f"|----------|-------|",
+        "",
+        "## Summary",
+        "",
+        "| Severity | Count |",
+        "|----------|-------|",
         f"| 🔴 Critical | {result.critical_count} |",
         f"| 🟠 High | {result.high_count} |",
         f"| 🟡 Medium | {result.medium_count} |",
         f"| 🔵 Low | {result.low_count} |",
         f"| ⚪ Info | {result.info_count} |",
         f"| **Total** | **{result.total_findings}** |",
-        f"",
+        "",
     ]
 
     if result.masvs_result:

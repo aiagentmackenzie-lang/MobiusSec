@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import Any
 
 import plistlib  # noqa: F401 — used at runtime
 
@@ -168,20 +169,20 @@ class Extractor:
         if self.work_dir.exists():
             shutil.rmtree(self.work_dir, ignore_errors=True)
 
-    def parse_plist(self, plist_path: Path) -> dict:
+    def parse_plist(self, plist_path: Path) -> dict[str, Any]:
         """Parse a plist file and return as dict."""
         try:
             with open(plist_path, "rb") as f:
-                return plistlib.loads(f.read())
+                return dict(plistlib.loads(f.read()))
         except Exception:
             # Try biplist for binary plists
             try:
                 import biplist
-                return biplist.readPlist(str(plist_path))
+                return dict(biplist.readPlist(str(plist_path)))
             except ImportError:
                 return {}
 
-    def parse_xml(self, xml_path: Path) -> object:
+    def parse_xml(self, xml_path: Path) -> Any | None:
         """Parse an XML file using lxml (falls back to stdlib xml.etree)."""
         try:
             from lxml import etree as _etree

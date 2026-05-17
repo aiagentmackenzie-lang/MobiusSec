@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import re
 import plistlib
-import json
 from pathlib import Path
 from typing import Any
 from datetime import datetime, timezone
 
-from mobiussec import MASVS_CODE
-from mobiussec.models import Finding, Severity, Platform
+from mobiussec.models import Finding, Platform
 
 
 # Known library signatures for Android (from classes.dex, JARs, AARs)
@@ -324,7 +322,7 @@ class SBOMGenerator:
             try:
                 with open(plist, "rb") as f:
                     data = plistlib.loads(f.read())
-                return data.get("CFBundleShortVersionString", data.get("CFBundleVersion", ""))
+                return str(data.get("CFBundleShortVersionString", data.get("CFBundleVersion", "")))
             except Exception:
                 pass
         return ""

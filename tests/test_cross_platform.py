@@ -3,7 +3,6 @@
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from mobiussec.cross_platform import CrossPlatformAnalyzer, FLUTTER_PATTERNS, REACT_NATIVE_PATTERNS
 from mobiussec.models import Platform
@@ -69,7 +68,7 @@ const getToken = async () => {
 };
 ''')
             analyzer = CrossPlatformAnalyzer(tmp_path, Platform.ANDROID)
-            findings = analyzer.analyze()
+            analyzer.analyze()
             assert "react_native" in analyzer.detected_frameworks
 
     def test_unique_finding_ids_flutter(self):

@@ -101,7 +101,7 @@ def get_profile(name: str) -> dict[str, Any]:
     return PROFILES[name]
 
 
-def list_profiles() -> list[dict[str, str]]:
+def list_profiles() -> list[dict[str, Any]]:
     """List all available deploy profiles."""
     return [{"name": k, "description": v["description"]} for k, v in PROFILES.items()]
 

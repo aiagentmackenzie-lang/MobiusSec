@@ -1,9 +1,8 @@
 """Tests for portfolio bridge."""
 
-import pytest
 
-from mobiussec.portfolio_bridge import PortfolioBridge, BridgeConfig, PORTFOLIO_TOOLS
-from mobiussec.models import Finding, Severity, Platform
+from mobiussec.portfolio_bridge import PortfolioBridge, PORTFOLIO_TOOLS
+from mobiussec.models import Finding, Severity
 
 
 class TestPortfolioBridge:

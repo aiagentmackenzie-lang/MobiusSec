@@ -88,7 +88,7 @@ class DiffAnalyzer:
         scores1 = self.result1.masvs_result.category_scores
         scores2 = self.result2.masvs_result.category_scores
 
-        diff: dict[str, dict[str, int]] = {}
+        diff: dict[str, float] = {}
         for cat in scores1:
             s1 = scores1[cat]
             s2 = scores2.get(cat, {"pass": 0, "fail": 0, "warn": 0, "skip": 0})
@@ -96,7 +96,7 @@ class DiffAnalyzer:
             total2 = s2["pass"] + s2["fail"] + s2["warn"]
             pct1 = (s1["pass"] / total1 * 100) if total1 > 0 else 0
             pct2 = (s2["pass"] / total2 * 100) if total2 > 0 else 0
-            diff[cat] = round(pct2 - pct1, 1)
+            diff[cat] = float(f"{(pct2 - pct1):.1f}")
 
         return diff
 

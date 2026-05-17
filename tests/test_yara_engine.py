@@ -3,7 +3,6 @@
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from mobiussec.yara_engine import YARAEngine, ANDROID_YARA_RULES, IOS_YARA_RULES
 from mobiussec.models import Platform

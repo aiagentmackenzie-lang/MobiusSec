@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -91,7 +91,7 @@ class PortfolioBridge:
             for name, tool in PORTFOLIO_TOOLS.items()
         ]
 
-    def export_findings_for_tool(self, tool_name: str, findings: list) -> dict[str, Any]:
+    def export_findings_for_tool(self, tool_name: str, findings: list[Any]) -> dict[str, Any]:
         """Export findings in a format suitable for a specific portfolio tool."""
         tool = PORTFOLIO_TOOLS.get(tool_name)
         if not tool:

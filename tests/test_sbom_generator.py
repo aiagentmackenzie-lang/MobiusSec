@@ -3,7 +3,6 @@
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from mobiussec.sbom_generator import SBOMGenerator, ANDROID_LIB_SIGNATURES, IOS_LIB_SIGNATURES
 from mobiussec.models import Platform

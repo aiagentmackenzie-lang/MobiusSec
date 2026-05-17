@@ -1,6 +1,5 @@
 """Tests for the scanner orchestrator."""
 
-import pytest
 import tempfile
 from pathlib import Path
 
@@ -21,7 +20,7 @@ class TestScanner:
         assert len(result.errors) > 0
 
     def test_gate_check_l1(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory():
             config = ScanConfig(
                 app_path=Path("/test/app.apk"),
                 gate_level="L1",

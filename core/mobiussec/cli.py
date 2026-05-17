@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 import typer
 from rich.console import Console
@@ -15,15 +14,15 @@ from rich.table import Table
 from rich.text import Text
 
 from mobiussec import MASVS_CATEGORIES
-from mobiussec.models import ScanConfig, Severity, MASVSStatus
+from mobiussec.models import ScanConfig, Severity, MASVSStatus, ScanResult
 from mobiussec.scanner import Scanner
 from mobiussec.reports import generate_html_report, generate_sarif_report, generate_markdown_report
 from mobiussec.diff_analyzer import DiffAnalyzer
 from mobiussec.remediation import RemediationEngine
 from mobiussec.stix_export import export_stix_json
 from mobiussec.cicd import generate_github_actions, generate_gitlab_ci, generate_jenkinsfile, generate_all_cicd
-from mobiussec.deploy import get_profile, list_profiles, generate_docker_compose
-from mobiussec.portfolio_bridge import PortfolioBridge, BridgeConfig
+from mobiussec.deploy import get_profile, generate_docker_compose
+from mobiussec.portfolio_bridge import PortfolioBridge
 
 app = typer.Typer(
     name="mobius",
@@ -79,14 +78,14 @@ def scan(
 
     platform = _detect_platform(path)
     if platform == "unknown":
-        console.print(f"[red]Error: Unsupported file type. Use .apk or .ipa files.[/red]")
+        console.print("[red]Error: Unsupported file type. Use .apk or .ipa files.[/red]")
         raise typer.Exit(1)
 
     # Header
     console.print()
     console.print(Panel.fit(
-        f"[bold]MobiusSec[/bold] — Unified Mobile Security Platform\n"
-        f"[dim]One tool. Both platforms. No escape.[/dim]",
+        "[bold]MobiusSec[/bold] — Unified Mobile Security Platform\n"
+        "[dim]One tool. Both platforms. No escape.[/dim]",
         border_style="bright_blue",
     ))
     console.print(f"\n  📱 Scanning: [bold]{path.name}[/bold]")
@@ -131,6 +130,9 @@ def scan(
         else:
             console.print(f"\n[bold green]✅ MASVS {gate.upper()} gate: PASSED[/bold green]")
 
+    # Severity fail-on check
+    _check_fail_on(result, config)
+
 
 @app.command()
 def masvs(
@@ -148,7 +150,7 @@ def masvs(
 
     platform = _detect_platform(path)
     if platform == "unknown":
-        console.print(f"[red]Error: Unsupported file type.[/red]")
+        console.print("[red]Error: Unsupported file type.[/red]")
         raise typer.Exit(1)
 
     console.print()
@@ -186,6 +188,9 @@ def masvs(
             raise typer.Exit(1)
         else:
             console.print(f"\n[bold green]✅ MASVS {gate.upper()} gate: PASSED[/bold green]")
+
+    # Severity fail-on check
+    _check_fail_on(result, config)
 
     # MASVS compliance table
     table = Table(title="OWASP MASVS 2.0 Compliance", show_header=True, header_style="bold cyan")
@@ -377,7 +382,7 @@ def fix(
             _display_remediation(rem)
 
 
-def _display_remediation(rem: dict) -> None:
+def _display_remediation(rem: dict[str, Any]) -> None:
     """Display a single remediation."""
     console.print(f"  [bold]{rem.get('finding_id', '')}[/bold]: {rem.get('title', '')}")
     console.print(f"    Priority: {rem.get('priority', 'P3')}")
@@ -445,7 +450,7 @@ def privacy(
 
     platform = _detect_platform(path)
     if platform == "unknown":
-        console.print(f"[red]Error: Unsupported file type.[/red]")
+        console.print("[red]Error: Unsupported file type.[/red]")
         raise typer.Exit(1)
 
     console.print()
@@ -535,7 +540,7 @@ def sbom(
 
     platform = _detect_platform(path)
     if platform == "unknown":
-        console.print(f"[red]Error: Unsupported file type.[/red]")
+        console.print("[red]Error: Unsupported file type.[/red]")
         raise typer.Exit(1)
 
     console.print()
@@ -704,7 +709,28 @@ def bridge_cmd(
     console.print(table)
 
 
-def _display_rich(result: "ScanResult", config: ScanConfig) -> None:
+def _check_fail_on(result: ScanResult, config: ScanConfig) -> None:
+    """Check if scan results exceed the configured fail-on severity."""
+    if not config.fail_on:
+        return
+    severity_map = {
+        "critical": {Severity.CRITICAL},
+        "high": {Severity.CRITICAL, Severity.HIGH},
+        "medium": {Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM},
+        "low": {Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW},
+        "info": {Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO},
+    }
+    trigger_set = severity_map.get(config.fail_on.lower(), {Severity.CRITICAL, Severity.HIGH})
+    for finding in result.findings:
+        if finding.severity in trigger_set:
+            console.print(
+                f"\n[bold red]🚧 Fail-on {config.fail_on.upper()}: "
+                f"Found {finding.severity.value.upper()} finding ({finding.id})[/bold red]"
+            )
+            raise typer.Exit(1)
+
+
+def _display_rich(result: ScanResult, config: ScanConfig) -> None:
     """Display scan results in rich terminal format."""
     # Summary panel
     platform_icon = "🤖" if result.platform.value == "android" else "🍎"
@@ -771,7 +797,7 @@ def _display_rich(result: "ScanResult", config: ScanConfig) -> None:
                 console.print(f"    [dim]→ {f.remediation}[/dim]")
 
 
-def _output_json(result: "ScanResult", config: ScanConfig) -> None:
+def _output_json(result: ScanResult, config: ScanConfig) -> None:
     """Output results as JSON."""
     data = result.to_dict()
     json_str = json.dumps(data, indent=2, default=str)

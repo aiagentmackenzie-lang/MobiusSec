@@ -5,7 +5,6 @@ from __future__ import annotations
 import plistlib
 import re
 import subprocess
-import shutil
 from pathlib import Path
 from typing import Any
 
@@ -15,8 +14,6 @@ from mobiussec import (
     MASVS_NETWORK,
     MASVS_PLATFORM,
     MASVS_AUTH,
-    MASVS_CODE,
-    MASVS_RESILIENCE,
     MASVS_PRIVACY,
 )
 from mobiussec.models import Finding, Severity, Platform
@@ -160,11 +157,11 @@ class iOSAnalyzer:
         """Parse a plist file."""
         try:
             with open(path, "rb") as f:
-                return plistlib.loads(f.read())
+                return dict(plistlib.loads(f.read()))
         except Exception:
             try:
                 import biplist
-                return biplist.readPlist(str(path))
+                return dict(biplist.readPlist(str(path)))
             except Exception:
                 return {}
 
@@ -176,9 +173,8 @@ class iOSAnalyzer:
             start = content.find("<?xml")
             end = content.find("</plist>") + len("</plist>")
             if start >= 0 and end > start:
-                import io
                 plist_data = plistlib.loads(content[start:end].encode())
-                return plist_data.get("Entitlements", {})
+                return dict(plist_data.get("Entitlements", {}))
         except Exception:
             pass
         return {}
@@ -261,7 +257,6 @@ class iOSAnalyzer:
 
         for url_type in url_types:
             schemes = url_type.get("CFBundleURLSchemes", [])
-            name = url_type.get("CFBundleURLName", "unknown")
             for scheme in schemes:
                 if isinstance(scheme, str):
                     severity = Severity.MEDIUM
@@ -629,14 +624,14 @@ class iOSAnalyzer:
     @property
     def bundle_id(self) -> str:
         """Extract bundle identifier from Info.plist."""
-        return self._info_plist.get("CFBundleIdentifier", "unknown")
+        return str(self._info_plist.get("CFBundleIdentifier", "unknown"))
 
     @property
     def app_name(self) -> str:
         """Extract app display name."""
-        return self._info_plist.get("CFBundleDisplayName", self._info_plist.get("CFBundleName", "unknown"))
+        return str(self._info_plist.get("CFBundleDisplayName", self._info_plist.get("CFBundleName", "unknown")))
 
     @property
     def version(self) -> str:
         """Extract app version."""
-        return self._info_plist.get("CFBundleShortVersionString", "unknown")
+        return str(self._info_plist.get("CFBundleShortVersionString", "unknown"))

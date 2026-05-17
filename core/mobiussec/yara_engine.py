@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
-from mobiussec import MASVS_RESILIENCE, MASVS_CODE
 from mobiussec.models import Finding, Severity, Platform
 
 
@@ -195,7 +193,7 @@ rule android_clipboard_malware {
         $s2 = "OnPrimaryClipChangedListener" ascii
         $s3 = "setPrimaryClip" ascii
     condition:
-        $s1 and $s2
+        $s1 and $s2 and $s3
 }
 """
 
@@ -214,7 +212,7 @@ rule ios_jailbreak_detection {
         $s5 = "isJailbroken" ascii
         $s6 = "checkJailbreak" ascii
     condition:
-        any of ($s5, $s6) or (#s1 > 0 and #s2 > 0)
+        any of ($s5, $s6) or (#s1 > 0 and #s2 > 0) or (#s3 > 0 and #s4 > 0)
 }
 
 rule ios_anti_debug {
@@ -335,19 +333,6 @@ class YARAEngine:
 
     def _scan_with_regex(self) -> list[Finding]:
         """Fallback: scan using regex when yara-python is not available."""
-        import re
-
-        # Parse YARA rules into simplified regex patterns
-        if self.platform == Platform.ANDROID:
-            rule_text = ANDROID_YARA_RULES
-        else:
-            rule_text = IOS_YARA_RULES
-
-        # Extract rule definitions
-        rule_pattern = re.compile(
-            r'rule\s+(\w+)\s*\{[^}]*?meta:[^}]*?description\s*=\s*"([^"]+)"[^}]*?severity\s*=\s*"([^"]+)"[^}]*?category\s*=\s*"([^"]+)"[^}]*?strings:[^}]*?\$s\d+\s*=\s*"([^"]+)"[^}]*?condition:[^}]*?\}',
-            re.DOTALL,
-        )
 
         # Get all file content (capped)
         all_content = self._get_all_content()

@@ -1,6 +1,5 @@
 """Tests for lxml graceful degradation — ensures modules don't crash without lxml."""
 
-import pytest
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -13,8 +12,6 @@ class TestLxmlGracefulDegradation:
         """AndroidAnalyzer should not crash if lxml is missing."""
         with patch.dict("sys.modules", {"lxml": None}):
             # Force re-import
-            import importlib
-            import mobiussec.android_analyzer
             # The module should still be importable (lxml guarded at top level)
             # Since lxml is actually installed, we just verify the import works
             from mobiussec.android_analyzer import AndroidAnalyzer

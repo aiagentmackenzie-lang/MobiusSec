@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
+from typing import Any
 
-from mobiussec import PLATFORM_ANDROID, PLATFORM_IOS
 from mobiussec.extractor import Extractor
 from mobiussec.android_analyzer import AndroidAnalyzer
 from mobiussec.ios_analyzer import iOSAnalyzer
@@ -31,8 +30,8 @@ class Scanner:
         self.extractor = Extractor(config.app_path)
         self.findings: list[Finding] = []
         self.errors: list[str] = []
-        self.privacy_report: dict | None = None
-        self.sbom: dict | None = None
+        self.privacy_report: dict[str, Any] | None = None
+        self.sbom: dict[str, Any] | None = None
 
     def scan(self) -> ScanResult:
         """Run a complete security scan."""
@@ -58,16 +57,17 @@ class Scanner:
         version = "unknown"
 
         if platform == Platform.ANDROID:
-            analyzer = AndroidAnalyzer(extracted_dir)
-            self.findings = analyzer.analyze()
-            package_name = analyzer.package_name
-            app_name = analyzer.app_name
+            android_analyzer = AndroidAnalyzer(extracted_dir)
+            self.findings = android_analyzer.analyze()
+            package_name = android_analyzer.package_name
+            app_name = android_analyzer.app_name
+            version = android_analyzer.version
         elif platform == Platform.IOS:
-            analyzer = iOSAnalyzer(extracted_dir)
-            self.findings = analyzer.analyze()
-            package_name = analyzer.bundle_id
-            app_name = analyzer.app_name
-            version = analyzer.version
+            ios_analyzer = iOSAnalyzer(extracted_dir)
+            self.findings = ios_analyzer.analyze()
+            package_name = ios_analyzer.bundle_id
+            app_name = ios_analyzer.app_name
+            version = ios_analyzer.version
 
         # 3. Secrets scanner
         if not self.config.quick:

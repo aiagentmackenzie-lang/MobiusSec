@@ -1,6 +1,7 @@
 """Tests for MobiusSec data models."""
 
-import pytest
+from pathlib import Path
+
 from mobiussec.models import (
     Finding,
     MASVSControl,
@@ -136,7 +137,3 @@ class TestScanConfig:
         assert config.quick is False
         assert config.gate_level == ""
         assert config.output_format == "rich"
-
-
-# Import Path for test
-from pathlib import Path
